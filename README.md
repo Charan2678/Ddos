@@ -201,4 +201,4 @@ Visit **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ## 👨‍💻 Author
 
-Built by **Charan Neerukonda**
+Built by **Charan Neerukonda and R Ravi**
