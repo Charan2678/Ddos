@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-cyber-slate-dark font-sans antialiased overflow-x-hidden;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(13, 110, 253, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(13, 110, 253, 0.02) 0px, transparent 50%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans tracking-tight text-cyber-slate-deep;
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-100;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-blue-200 rounded-full hover:bg-blue-300 transition-colors;
+}
+
+/* Toastify custom theme modifications to blend with our Blue/White theme */
+.Toastify__toast {
+  @apply rounded-xl border border-slate-100 shadow-premium font-sans !important;
+}
+
+/* Animation utilities for the cybersecurity cards */
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.radar-pulse-ring {
+  animation: radar-pulse 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}

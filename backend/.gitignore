@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+venv/
+ENV/
+env/
+
+# Database files
+ddos_system.db
+*.db
+
+# ML models and uploads
+models/*.joblib
+models/*.pkl
+datasets/*.csv
+uploads/*.csv
+reports/*.pdf
+reports/*.csv
