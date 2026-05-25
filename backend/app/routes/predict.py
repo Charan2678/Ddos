@@ -160,16 +160,17 @@ def start_traffic_sniffer(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        start_sniffer()
+        started = start_sniffer()
         
-        sys_log = SystemLog(
-            action="SNIFFER_STARTED",
-            details=f"Live packet capture listener activated by operator '{current_user.username}'",
-            user_id=current_user.id
-        )
-        db.add(sys_log)
-        db.commit()
-        
+        if started:
+            sys_log = SystemLog(
+                action="SNIFFER_STARTED",
+                details=f"Live packet capture listener activated by operator '{current_user.username}'",
+                user_id=current_user.id
+            )
+            db.add(sys_log)
+            db.commit()
+            
         return {"status": "success", "message": "Intrusion detection sniffer thread activated."}
     except Exception as e:
         raise HTTPException(
@@ -183,16 +184,17 @@ def stop_traffic_sniffer(
     current_user: User = Depends(get_current_user)
 ):
     try:
-        stop_sniffer()
+        stopped = stop_sniffer()
         
-        sys_log = SystemLog(
-            action="SNIFFER_HALTED",
-            details=f"Live packet capture listener paused by operator '{current_user.username}'",
-            user_id=current_user.id
-        )
-        db.add(sys_log)
-        db.commit()
-        
+        if stopped:
+            sys_log = SystemLog(
+                action="SNIFFER_HALTED",
+                details=f"Live packet capture listener paused by operator '{current_user.username}'",
+                user_id=current_user.id
+            )
+            db.add(sys_log)
+            db.commit()
+            
         return {"status": "success", "message": "Intrusion detection sniffer thread halted."}
     except Exception as e:
         raise HTTPException(

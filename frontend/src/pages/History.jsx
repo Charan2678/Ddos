@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -12,43 +12,94 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
-const INITIAL_LOGS = [
-  { id: 1, timestamp: '2026-05-25 12:02:15', ip: '192.168.1.142', proto: 'TCP', port: 80, classification: 'SYN Flood', confidence: 0.9982, level: 'CRITICAL' },
-  { id: 2, timestamp: '2026-05-25 11:48:32', ip: '10.0.0.84', proto: 'UDP', port: 53, classification: 'UDP Flood', confidence: 0.9871, level: 'CRITICAL' },
-  { id: 3, timestamp: '2026-05-25 11:42:05', ip: '172.16.254.10', proto: 'TCP', port: 443, classification: 'HTTP Flood', confidence: 0.9424, level: 'HIGH' },
-  { id: 4, timestamp: '2026-05-25 11:30:12', ip: '192.168.10.5', proto: 'TCP', port: 80, classification: 'SYN Flood', confidence: 0.8521, level: 'MEDIUM' },
-  { id: 5, timestamp: '2026-05-25 10:14:02', ip: '8.8.8.8', proto: 'UDP', port: 53, classification: 'BENIGN', confidence: 0.9942, level: 'LOW' },
-  { id: 6, timestamp: '2026-05-25 09:44:11', ip: '192.168.1.1', proto: 'ICMP', port: 0, classification: 'BENIGN', confidence: 0.9991, level: 'LOW' },
-  { id: 7, timestamp: '2026-05-25 08:30:56', ip: '45.227.254.12', proto: 'TCP', port: 23, classification: 'SYN Flood', confidence: 0.9989, level: 'CRITICAL' },
-  { id: 8, timestamp: '2026-05-24 23:18:42', ip: '185.220.101.5', proto: 'TCP', port: 80, classification: 'HTTP Flood', confidence: 0.9124, level: 'HIGH' },
-  { id: 9, timestamp: '2026-05-24 22:04:15', ip: '192.168.1.102', proto: 'TCP', port: 50221, classification: 'BENIGN', confidence: 0.9972, level: 'LOW' },
-  { id: 10, timestamp: '2026-05-24 20:12:00', ip: '192.168.12.8', proto: 'ICMP', port: 0, classification: 'ICMP Flood', confidence: 0.9821, level: 'HIGH' }
-];
-
 const History = () => {
-  const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [protoFilter, setProtoFilter] = useState('ALL');
   const [labelFilter, setLabelFilter] = useState('ALL');
   const [levelFilter, setLevelFilter] = useState('ALL');
 
+  const fetchHistory = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/reports/history', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLogs(data);
+      } else {
+        toast.error("Failed to fetch history logs.");
+      }
+    } catch (error) {
+      toast.error("Network error while fetching history.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
   // Filter logic
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.ip.includes(search) || log.classification.toLowerCase().includes(search.toLowerCase());
+    const ipStr = log.ip || '';
+    const classStr = log.classification || '';
+    const matchesSearch = ipStr.toLowerCase().includes(search.toLowerCase()) || 
+                          classStr.toLowerCase().includes(search.toLowerCase());
     const matchesProto = protoFilter === 'ALL' || log.proto === protoFilter;
     const matchesLabel = labelFilter === 'ALL' || 
-      (labelFilter === 'MALICIOUS' ? log.classification !== 'BENIGN' : log.classification === 'BENIGN');
+      (labelFilter === 'MALICIOUS' ? classStr !== 'BENIGN' : classStr === 'BENIGN');
     const matchesLevel = levelFilter === 'ALL' || log.level === levelFilter;
     
     return matchesSearch && matchesProto && matchesLabel && matchesLevel;
   });
 
   const triggerExport = () => {
-    toast.success("History logs compiled and exported to downloads/ddos_history.csv");
+    if (filteredLogs.length === 0) {
+      toast.warning("No logs to export.");
+      return;
+    }
+    
+    const headers = ["Timestamp", "Source IP", "Protocol", "Target Port", "Classification", "Confidence", "Threat Level"];
+    const csvContent = [
+      headers.join(","),
+      ...filteredLogs.map(log => 
+        `"${log.timestamp}","${log.ip}","${log.proto}","${log.port}","${log.classification}","${log.confidence}","${log.level}"`
+      )
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ddos_history_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("History logs exported successfully!");
   };
 
   const handleRefresh = () => {
+    fetchHistory();
     toast.info("Refreshed prediction history logs.");
+  };
+
+  // Helper to convert UTC timestamp from DB to local time string
+  const formatLocalTime = (utcString) => {
+    if (!utcString) return "";
+    // Append 'Z' to tell Date object this is UTC
+    const date = new Date(utcString.includes('Z') ? utcString : utcString.replace(' ', 'T') + 'Z');
+    if (isNaN(date)) return utcString;
+    
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   };
 
   return (
@@ -163,7 +214,7 @@ const History = () => {
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-4 font-mono text-slate-400">{log.timestamp}</td>
+                    <td className="px-5 py-4 font-mono text-slate-400">{formatLocalTime(log.timestamp)}</td>
                     <td className="px-5 py-4 font-semibold text-slate-700">{log.ip}</td>
                     <td className="px-5 py-4 font-bold text-slate-500">{log.proto}</td>
                     <td className="px-5 py-4 font-mono text-slate-400">{log.port}</td>

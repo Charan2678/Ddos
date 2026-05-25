@@ -1,137 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  ShieldAlert, 
-  Activity, 
-  Globe, 
-  Cpu, 
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  ArrowUpRight
+  ShieldAlert, Activity, Globe, Cpu, AlertTriangle, Clock, ArrowUpRight
 } from 'lucide-react';
 import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  BarChart,
-  Bar
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts';
 import { toast } from 'react-toastify';
+import { useAuth } from '../context/AuthContext';
 
 const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'];
 const ATTACK_TYPES = ['BENIGN', 'SYN Flood', 'UDP Flood', 'ICMP Flood', 'HTTP Flood'];
 
 const Dashboard = () => {
+  const { token } = useAuth();
+
   // Stats states
-  const [totalTraffic, setTotalTraffic] = useState(148204);
-  const [totalAttacks, setTotalAttacks] = useState(2408);
-  const [activeThreats, setActiveThreats] = useState(1);
-  const [packetRate, setPacketRate] = useState(482);
+  const [totalTraffic, setTotalTraffic] = useState(0);
+  const [totalAttacks, setTotalAttacks] = useState(0);
+  const [activeThreats, setActiveThreats] = useState(0);
+  const [packetRate, setPacketRate] = useState(0);
   const [systemStatus, setSystemStatus] = useState('Secure');
+  const [isConnected, setIsConnected] = useState(false);
 
   // Chart states
   const [trafficHistory, setTrafficHistory] = useState([
-    { time: '11:00', packets: 420, attacks: 0 },
-    { time: '11:10', packets: 450, attacks: 0 },
-    { time: '11:20', packets: 390, attacks: 2 },
-    { time: '11:30', packets: 510, attacks: 12 },
-    { time: '11:40', packets: 850, attacks: 180 }, // spike
-    { time: '11:50', packets: 480, attacks: 15 },
-    { time: '12:00', packets: 460, attacks: 0 }
+    { time: '...', packets: 0, attacks: 0 }
   ]);
 
   const [attackDistribution, setAttackDistribution] = useState([
-    { name: 'BENIGN', value: 145796 },
-    { name: 'SYN Flood', value: 1250 },
-    { name: 'UDP Flood', value: 820 },
-    { name: 'ICMP Flood', value: 242 },
-    { name: 'HTTP Flood', value: 96 }
+    { name: 'BENIGN', value: 1 }, // init with 1 to avoid empty chart rendering issues
+    { name: 'SYN Flood', value: 0 },
+    { name: 'UDP Flood', value: 0 },
+    { name: 'ICMP Flood', value: 0 },
+    { name: 'HTTP Flood', value: 0 }
   ]);
 
   // Live Threat Logs table
-  const [recentLogs, setRecentLogs] = useState([
-    { id: 1, time: '12:02:15', ip: '192.168.1.142', type: 'SYN Flood', rate: '4,280 p/s', severity: 'CRITICAL' },
-    { id: 2, time: '11:48:32', ip: '10.0.0.84', type: 'UDP Flood', rate: '2,910 p/s', severity: 'HIGH' },
-    { id: 3, time: '11:42:05', ip: '172.16.254.10', type: 'HTTP Flood', rate: '120 req/s', severity: 'MEDIUM' },
-    { id: 4, time: '11:30:12', ip: '192.168.10.5', type: 'SYN Flood', rate: '850 p/s', severity: 'LOW' }
-  ]);
+  const [recentLogs, setRecentLogs] = useState([]);
 
-  // Telemetry Simulation (Mock WebSocket Stream)
+  const wsRef = useRef(null);
+
+  // Connection and API Handlers
   useEffect(() => {
-    const timer = setInterval(() => {
-      // 1. Randomly update packet rate
-      const newRate = Math.floor(Math.random() * (600 - 350) + 350);
-      setPacketRate(newRate);
+    // Initialize WebSocket to passively listen to traffic
+    try {
+      const ws = new WebSocket('ws://localhost:8000/api/live-traffic');
+      wsRef.current = ws;
 
-      // 2. Increment total traffic
-      setTotalTraffic(prev => prev + Math.floor(newRate * 2.5));
+      ws.onopen = () => setIsConnected(true);
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const { packet, stats } = data;
 
-      // 3. Update active chart history
-      setTrafficHistory(prev => {
-        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const nextHist = [...prev.slice(1), { time, packets: newRate, attacks: activeThreats > 0 ? Math.floor(Math.random() * 20) : 0 }];
-        return nextHist;
-      });
+        // Update overall stats
+        setPacketRate(stats.pps);
+        setActiveThreats(stats.threats);
+        setTotalTraffic(prev => prev + 1);
 
-      // 4. Randomly trigger simulated attacks (10% chance per cycle)
-      if (Math.random() > 0.90) {
-        const attackIp = `192.168.${Math.floor(Math.random() * 254)}.${Math.floor(Math.random() * 254)}`;
-        const attackType = ATTACK_TYPES[Math.floor(Math.random() * (ATTACK_TYPES.length - 1)) + 1]; // Avoid BENIGN
-        const attackSeverity = attackType === 'SYN Flood' || attackType === 'UDP Flood' ? 'CRITICAL' : 'HIGH';
-        const rateStr = attackType === 'HTTP Flood' ? `${Math.floor(Math.random() * 100) + 50} req/s` : `${(Math.random() * 5 + 1).toFixed(1)}k p/s`;
-
-        // Update counts
-        setTotalAttacks(prev => prev + 1);
-        setActiveThreats(prev => prev + 1);
-        setSystemStatus('Attack Active');
-
-        // Add Log
-        const newLog = {
-          id: Date.now(),
-          time: new Date().toLocaleTimeString([], { hour12: false }),
-          ip: attackIp,
-          type: attackType,
-          rate: rateStr,
-          severity: attackSeverity
-        };
-        setRecentLogs(prev => [newLog, ...prev.slice(0, 5)]);
-
-        // Update distribution chart
-        setAttackDistribution(prev => 
-          prev.map(item => item.name === attackType ? { ...item, value: item.value + 1 } : item)
-        );
-
-        // Push Toast Alert
-        toast.error(`⚠️ DDoS Threat Detected: ${attackType} from ${attackIp}!`, {
-          icon: <AlertTriangle className="text-red-500" />
+        // Update historical chart data based on periodic stats (or on every packet)
+        setTrafficHistory(prev => {
+          // Avoid duplicate times to make the chart smooth
+          const lastEntry = prev[prev.length - 1];
+          if (lastEntry && lastEntry.time === packet.time) return prev;
+          
+          const newHist = [...prev, { time: packet.time, packets: stats.pps, attacks: stats.threats }];
+          return newHist.slice(-20); // keep last 20 data points
         });
 
-        // Set timeout to clear the threat active state after 8 seconds
-        setTimeout(() => {
-          setActiveThreats(prev => Math.max(0, prev - 1));
-        }, 8000);
-      }
-    }, 2500);
+        if (packet.action === 'BLOCK') {
+          setTotalAttacks(prev => prev + 1);
+          setSystemStatus('Attack Active');
 
-    return () => clearInterval(timer);
-  }, [activeThreats]);
+          // Add to logs
+          setRecentLogs(prev => {
+            const newLog = {
+              id: Date.now() + Math.random(),
+              time: packet.time,
+              ip: packet.src,
+              type: packet.label,
+              rate: 'Raw Socket', // Not easily computable per packet without history
+              severity: 'CRITICAL'
+            };
+            return [newLog, ...prev].slice(0, 50); // limit to 50 logs
+          });
 
-  // Adjust system status text based on active threats
-  useEffect(() => {
-    if (activeThreats === 0) {
-      setSystemStatus('Secure');
-    } else {
-      setSystemStatus('Attack Active');
+          // Update distribution pie chart
+          setAttackDistribution(prev => {
+            const copy = [...prev];
+            const idx = copy.findIndex(item => item.name === packet.label);
+            if (idx !== -1) {
+              copy[idx].value += 1;
+            } else {
+              copy.push({ name: packet.label, value: 1 });
+            }
+            return copy;
+          });
+
+          // Show Toast notification for new IP block
+          toast.error(`🚨 DDoS Threat Detected: ${packet.label} from ${packet.src}!`, {
+            icon: <AlertTriangle className="text-red-500" />,
+            toastId: `dash-block-${packet.src}`, // deduplicate toast by IP
+            autoClose: 2000
+          });
+        }
+      };
+
+      ws.onerror = () => setIsConnected(false);
+      ws.onclose = () => setIsConnected(false);
+
+    } catch (e) {
+      console.error(e);
+      setIsConnected(false);
     }
+
+    // Cleanup: Just close the websocket on unmount. DO NOT stop the backend sniffer.
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, [token]);
+
+  // Reset system status to Secure when active threats drop to zero
+  useEffect(() => {
+    if (activeThreats === 0) setSystemStatus('Secure');
   }, [activeThreats]);
 
   // Cards configuration
@@ -154,10 +147,12 @@ const Dashboard = () => {
         <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-xs font-semibold text-slate-600">
           <Clock className="h-4 w-4 text-blue-600" />
           <span>Real-time Sniffer status:</span>
-          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className={`flex h-2.5 w-2.5 rounded-full relative ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`}>
+            {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
           </span>
-          <span className="text-emerald-600 font-bold uppercase tracking-wider">ONLINE</span>
+          <span className={`${isConnected ? 'text-emerald-600' : 'text-red-600'} font-bold uppercase tracking-wider`}>
+            {isConnected ? 'ONLINE' : 'OFFLINE'}
+          </span>
         </div>
       </div>
 
@@ -197,7 +192,7 @@ const Dashboard = () => {
               <p className="text-xs text-slate-400">Total packets analyzed compared to identified malicious packet counts</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600 border border-blue-100">
-              Interval: 2.5s
+              Live Stream
             </span>
           </div>
           <div className="h-72 w-full">
@@ -217,8 +212,8 @@ const Dashboard = () => {
                 <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                <Area type="monotone" dataKey="packets" name="Total Traffic" stroke="#0d6efd" strokeWidth={2} fillOpacity={1} fill="url(#colorPackets)" />
-                <Area type="monotone" dataKey="attacks" name="Attacks Detected" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorAttacks)" />
+                <Area type="monotone" dataKey="packets" name="Total Traffic (pps)" stroke="#0d6efd" strokeWidth={2} fillOpacity={1} fill="url(#colorPackets)" isAnimationActive={false} />
+                <Area type="monotone" dataKey="attacks" name="Active Threats" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorAttacks)" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -241,6 +236,7 @@ const Dashboard = () => {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
+                  isAnimationActive={false}
                 >
                   {attackDistribution.filter(item => item.value > 0).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -251,7 +247,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            {attackDistribution.map((item, idx) => (
+            {attackDistribution.filter(item => item.value > 0).map((item, idx) => (
               <div key={item.name} className="flex items-center space-x-1.5">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
                 <span className="text-slate-500 font-medium truncate block max-w-28">{item.name}</span>
@@ -268,10 +264,10 @@ const Dashboard = () => {
             <h3 className="text-base font-bold text-slate-800">Real-Time Threat Console</h3>
             <p className="text-xs text-slate-400">Scrolling log of identified anomalous packet rates and DDoS classifications</p>
           </div>
-          <button className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">
+          <a href="/history" className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">
             <span>View Full History</span>
             <ArrowUpRight className="h-4 w-4" />
-          </button>
+          </a>
         </div>
 
         {/* Responsive Table */}
@@ -287,7 +283,11 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {recentLogs.map((log) => (
+              {recentLogs.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-8 text-slate-400 italic">No malicious traffic detected yet. Listening on live feed...</td>
+                </tr>
+              ) : recentLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4 font-mono text-xs text-slate-400">{log.time}</td>
                   <td className="px-6 py-4 font-semibold text-slate-700">{log.ip}</td>

@@ -66,6 +66,15 @@ def generate_pdf_report(dest_path: str, stats: Dict[str, Any], logs_data: List[D
         leading=14,
         textColor=dark_neutral
     )
+    
+    header_style = ParagraphStyle(
+        'HeaderStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=14,
+        textColor=colors.white
+    )
 
     # 1. Header Section
     story.append(Paragraph("DDoS Shield: Intrusion Audit Report", title_style))
@@ -74,7 +83,7 @@ def generate_pdf_report(dest_path: str, stats: Dict[str, Any], logs_data: List[D
     # 2. Executive Summary Metrics Box
     story.append(Paragraph("Executive Summary Metrics", section_heading))
     summary_data = [
-        [Paragraph("<b>Metric Dimension</b>", body_style), Paragraph("<b>Value Captured</b>", body_style)],
+        [Paragraph("Metric Dimension", header_style), Paragraph("Value Captured", header_style)],
         [Paragraph("Total Packet Flows Audited", body_style), Paragraph(str(stats["total_scanned"]), body_style)],
         [Paragraph("Identified DDoS Anomalies", body_style), Paragraph(str(stats["total_anomalies"]), body_style)],
         [Paragraph("Primary Attack Vector Identified", body_style), Paragraph(stats["top_vector"], body_style)],
@@ -94,10 +103,6 @@ def generate_pdf_report(dest_path: str, stats: Dict[str, Any], logs_data: List[D
         ('GRID', (0, 0), (-1, -1), 1, border_color),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
-    
-    # Apply white text color to headers inside TableStyle
-    for i in range(2):
-        summary_data[0][i].style.textColor = colors.white
         
     story.append(summary_table)
     story.append(Spacer(1, 20))
@@ -110,11 +115,11 @@ def generate_pdf_report(dest_path: str, stats: Dict[str, Any], logs_data: List[D
     
     # Table headers
     table_data = [[
-        Paragraph("<b>Timestamp</b>", body_style),
-        Paragraph("<b>Source IP</b>", body_style),
-        Paragraph("<b>Protocol</b>", body_style),
-        Paragraph("<b>Classification</b>", body_style),
-        Paragraph("<b>Threat Level</b>", body_style)
+        Paragraph("Timestamp", header_style),
+        Paragraph("Source IP", header_style),
+        Paragraph("Protocol", header_style),
+        Paragraph("Classification", header_style),
+        Paragraph("Threat Level", header_style)
     ]]
     
     # Populate table rows
@@ -130,10 +135,6 @@ def generate_pdf_report(dest_path: str, stats: Dict[str, Any], logs_data: List[D
             label_p,
             Paragraph(log["level"], body_style)
         ])
-        
-    # Styles for recent logs headers
-    for cell in table_data[0]:
-        cell.style.textColor = colors.white
         
     logs_table = Table(table_data, colWidths=col_widths)
     logs_table.setStyle(TableStyle([

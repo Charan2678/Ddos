@@ -51,6 +51,11 @@ def process_scapy_packet(packet):
         
     src_ip = packet[IP].src
     dst_ip = packet[IP].dst
+    
+    # Ignore localhost/loopback traffic so we only monitor REAL external network traffic
+    if src_ip.startswith("127.") or dst_ip.startswith("127."):
+        return
+        
     proto_num = packet[IP].proto
     size_bytes = len(packet)
     
@@ -125,6 +130,8 @@ def process_scapy_packet(packet):
             }
         )
 
+LAST_LOG_TIME = {}
+
 def classify_and_broadcast_flow(src_ip: str, dst_ip: str, proto_name: str, size_bytes: int, syn_flag: int, features: dict):
     """Loads active model, classifies the network flow features, and broadcasts to WebSockets."""
     model, scaler = load_champion_model()
@@ -155,33 +162,38 @@ def classify_and_broadcast_flow(src_ip: str, dst_ip: str, proto_name: str, size_
         SNIFFER_STATE["threats"] += 1
         SNIFFER_STATE["suspicious_ips"].add(src_ip)
         
-        # Save attack to database history asynchronously
-        db = SessionLocal()
-        try:
-            latest_model = db.query(TrainedModel).order_by(TrainedModel.created_at.desc()).first()
-            model_id = latest_model.id if latest_model else None
+        now = time.time()
+        # Throttle DB inserts to prevent locks during heavy floods (max 1 write per 2 seconds per IP)
+        if now - LAST_LOG_TIME.get(src_ip, 0) > 2.0:
+            LAST_LOG_TIME[src_ip] = now
             
-            pred = Prediction(
-                input_data={**features, "src_ip": src_ip, "protocol_name": proto_name},
-                prediction_label=label,
-                confidence=confidence,
-                threat_level=threat_level,
-                model_id=model_id
-            )
-            db.add(pred)
-            
-            # Audit log
-            log = SystemLog(
-                action="ATTACK_ISOLATED",
-                details=f"Sniffer caught and blocked {label} traffic flow from {src_ip}"
-            )
-            db.add(log)
-            db.commit()
-        except Exception as err:
-            db.rollback()
-            print(f"Failed to log attack: {err}")
-        finally:
-            db.close()
+            # Save attack to database history asynchronously
+            db = SessionLocal()
+            try:
+                latest_model = db.query(TrainedModel).order_by(TrainedModel.created_at.desc()).first()
+                model_id = latest_model.id if latest_model else None
+                
+                pred = Prediction(
+                    input_data={**features, "src_ip": src_ip, "protocol_name": proto_name},
+                    prediction_label=label,
+                    confidence=confidence,
+                    threat_level=threat_level,
+                    model_id=model_id
+                )
+                db.add(pred)
+                
+                # Audit log
+                log = SystemLog(
+                    action="ATTACK_ISOLATED",
+                    details=f"Sniffer caught and blocked {label} traffic flow from {src_ip}"
+                )
+                db.add(log)
+                db.commit()
+            except Exception as err:
+                db.rollback()
+                print(f"Failed to log attack: {err}")
+            finally:
+                db.close()
             
         # Set timeout to clear threat metrics in 5 seconds
         threading.Timer(5.0, decrement_threat_counts, args=[src_ip]).start()
@@ -224,13 +236,17 @@ def decrement_threat_counts(src_ip):
 # RESILIENT SNIFFER LOOPS
 # ==========================================
 
+def should_stop_sniffer(packet=None):
+    return not SNIFFER_STATE["active"]
+
 def run_real_sniffer():
     """Runs the Scapy sniffer loop."""
     print("Scapy sniffer engine started on network socket interfaces.")
     try:
-        sniff(filter="ip", prn=process_scapy_packet, store=0)
+        # stop_filter allows the blocking sniff() call to terminate gracefully when halted
+        sniff(filter="ip", prn=process_scapy_packet, store=0, stop_filter=should_stop_sniffer)
     except Exception as e:
-        print(f"Scapy sniffer socket crashed: {e}. Falling back to traffic simulator.")
+        print(f"Scapy sniffer socket crashed: {e}. Missing Npcap/Admin rights. Falling back to traffic simulator.")
         run_simulated_sniffer()
 
 def run_simulated_sniffer():
@@ -297,9 +313,9 @@ def run_simulated_sniffer():
 # ==========================================
 
 def start_sniffer():
-    """Toggles sniffer thread state to ON."""
+    """Toggles sniffer thread state to ON. Returns True if state changed."""
     if SNIFFER_STATE["active"]:
-        return
+        return False
         
     SNIFFER_STATE["active"] = True
     SNIFFER_STATE["window_start"] = time.time()
@@ -317,12 +333,17 @@ def start_sniffer():
     if use_scapy:
         SNIFFER_STATE["thread"] = threading.Thread(target=run_real_sniffer, daemon=True)
     else:
+        print("Scapy unavailable or lacks permissions. Starting simulation thread instead.")
         SNIFFER_STATE["thread"] = threading.Thread(target=run_simulated_sniffer, daemon=True)
         
     SNIFFER_STATE["thread"].start()
+    return True
 
 def stop_sniffer():
-    """Toggles sniffer thread state to OFF."""
+    """Toggles sniffer thread state to OFF. Returns True if state changed."""
+    if not SNIFFER_STATE["active"]:
+        return False
+        
     SNIFFER_STATE["active"] = False
     SNIFFER_STATE["pps"] = 0
     SNIFFER_STATE["threats"] = 0
@@ -330,3 +351,5 @@ def stop_sniffer():
     
     if SNIFFER_STATE["thread"]:
         SNIFFER_STATE["thread"] = None
+        
+    return True

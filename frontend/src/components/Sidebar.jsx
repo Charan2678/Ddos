@@ -4,11 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
   Activity, 
-  Brain, 
   Play, 
   FileSpreadsheet, 
   History as HistoryIcon, 
-  TrendingUp, 
   ShieldCheck, 
   LogOut,
   ShieldAlert
@@ -18,14 +16,12 @@ const Sidebar = () => {
   const { user, logout, isAdmin } = useAuth();
 
   const navigationItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, adminOnly: false },
-    { name: 'Live Monitor', path: '/live-monitoring', icon: Activity, adminOnly: false },
-    { name: 'ML Training', path: '/ml-training', icon: Brain, adminOnly: false },
-    { name: 'Inference Panel', path: '/predict', icon: Play, adminOnly: false },
-    { name: 'Reports', path: '/reports', icon: FileSpreadsheet, adminOnly: false },
-    { name: 'Model Comparison', path: '/model-comparison', icon: TrendingUp, adminOnly: false },
-    { name: 'History Logs', path: '/history', icon: HistoryIcon, adminOnly: false },
-    { name: 'Admin Console', path: '/admin', icon: ShieldCheck, adminOnly: true },
+    { name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard, adminOnly: false },
+    { name: 'Live Monitor', path: '/app/live-monitoring', icon: Activity, adminOnly: false },
+    { name: 'Inference Panel', path: '/app/predict', icon: Play, adminOnly: false },
+    { name: 'Reports', path: '/app/reports', icon: FileSpreadsheet, adminOnly: false },
+    { name: 'History Logs', path: '/app/history', icon: HistoryIcon, adminOnly: false },
+    { name: 'Admin Console', path: '/app/admin', icon: ShieldCheck, adminOnly: true },
   ];
 
   return (

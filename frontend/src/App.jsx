@@ -9,12 +9,12 @@ import 'react-toastify/dist/ReactToastify.css';
 // Import Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import LiveMonitoring from './pages/LiveMonitoring';
 import MLTraining from './pages/MLTraining';
 import Prediction from './pages/Prediction';
 import Reports from './pages/Reports';
-import ModelComparison from './pages/ModelComparison';
 import History from './pages/History';
 import AdminPanel from './pages/AdminPanel';
 
@@ -41,23 +41,23 @@ function App() {
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route path="/" element={
+          {/* Protected Dashboard Routes - all nested under /app */}
+          <Route path="/app" element={
             <ProtectedRoute>
               <DashboardLayout />
             </ProtectedRoute>
           }>
-            {/* Redirect root to dashboard */}
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            {/* Redirect /app to /app/dashboard */}
+            <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="live-monitoring" element={<LiveMonitoring />} />
             <Route path="ml-training" element={<MLTraining />} />
             <Route path="predict" element={<Prediction />} />
             <Route path="reports" element={<Reports />} />
-            <Route path="model-comparison" element={<ModelComparison />} />
             <Route path="history" element={<History />} />
             <Route path="admin" element={
               <ProtectedRoute adminOnly={true}>
@@ -66,8 +66,8 @@ function App() {
             } />
           </Route>
 
-          {/* Catch-all route -> Redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* Catch-all route -> Redirect to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
       

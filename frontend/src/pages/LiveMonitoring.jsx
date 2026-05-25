@@ -46,9 +46,19 @@ const LiveMonitoring = () => {
   }, [logs, monitoring]);
 
   // Handle Start/Stop Monitoring
-  const toggleMonitoring = () => {
+  const toggleMonitoring = async () => {
+    // Get token for authorized API calls
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
     if (monitoring) {
       // STOP MONITORING
+      try {
+        await fetch('http://localhost:8000/api/stop-monitoring', { method: 'POST', headers });
+      } catch (e) {
+        console.error("Failed to stop backend sniffer", e);
+      }
+
       setMonitoring(false);
       setPacketsPerSec(0);
       toast.info('Packet sniffing paused.');
@@ -60,6 +70,12 @@ const LiveMonitoring = () => {
       }
     } else {
       // START MONITORING
+      try {
+        await fetch('http://localhost:8000/api/start-monitoring', { method: 'POST', headers });
+      } catch (e) {
+        console.error("Failed to start backend sniffer", e);
+      }
+
       setMonitoring(true);
       toast.success('Live packet sniffer initialized.');
       
@@ -75,13 +91,11 @@ const LiveMonitoring = () => {
 
         ws.onmessage = (event) => {
           const data = JSON.parse(event.data);
-          // Standard structure from FastAPI:
-          // { packet: {time, proto, src, dst, size, flags, action}, stats: {pps, threats, suspicious, protocol_counts} }
           handleIncomingPacket(data);
         };
 
         ws.onerror = (err) => {
-          console.warn("WebSocket could not connect to backend, running in mock telemetry mode.", err);
+          console.warn("WebSocket error.", err);
           setConnected(false);
         };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ShieldCheck, 
@@ -7,48 +7,93 @@ import {
   Trash2, 
   AlertTriangle,
   RotateCcw,
-  UserX,
-  UserPlus
+  UserX
 } from 'lucide-react';
 import { toast } from 'react-toastify';
-
-const INITIAL_USERS = [
-  { id: 1, username: 'admin', email: 'admin@shield.com', role: 'System Admin', created: '2026-05-20' },
-  { id: 2, username: 'analyst_john', email: 'john@shield.com', role: 'Security Analyst', created: '2026-05-24' },
-  { id: 3, username: 'operator_kelly', email: 'kelly@shield.com', role: 'Security Analyst', created: '2026-05-25' }
-];
-
-const INITIAL_AUDITS = [
-  { id: 1, timestamp: '2026-05-25 12:10:42', actor: 'admin', action: 'SNIFFER_INITIALIZED', ip: '127.0.0.1', status: 'SUCCESS' },
-  { id: 2, timestamp: '2026-05-25 11:58:12', actor: 'analyst_john', action: 'REPORT_DOWNLOADED', ip: '192.168.1.14', status: 'SUCCESS' },
-  { id: 3, timestamp: '2026-05-25 11:02:18', actor: 'admin', action: 'MODEL_RETRAIN_TRIGGERED', ip: '127.0.0.1', status: 'SUCCESS' },
-  { id: 4, timestamp: '2026-05-24 18:30:15', actor: 'operator_kelly', action: 'OPERATOR_REGISTERED', ip: '192.168.1.28', status: 'SUCCESS' }
-];
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const AdminPanel = () => {
-  const [users, setUsers] = useState(INITIAL_USERS);
-  const [audits, setAudits] = useState(INITIAL_AUDITS);
+  const [users, setUsers] = useState([]);
+  const [audits, setAudits] = useState([]);
+  const { token } = useAuth();
+
+  const fetchAdminData = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      
+      const [usersRes, logsRes] = await Promise.all([
+        axios.get('http://localhost:8000/api/users', config),
+        axios.get('http://localhost:8000/api/logs', config)
+      ]);
+      
+      setUsers(usersRes.data);
+      setAudits(logsRes.data);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load admin data. Are you an admin?');
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchAdminData();
+    }
+  }, [token]);
 
   // User Deletion Handler
-  const handleDeleteUser = (userId, username) => {
+  const handleDeleteUser = async (userId, username) => {
     if (username === 'admin') {
       toast.error("Cannot revoke main administrator rights.");
       return;
     }
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    toast.success(`Access revoked for operator: ${username}`);
+    
+    if (!window.confirm(`Are you sure you want to delete ${username}?`)) return;
+
+    try {
+      await axios.delete(`http://localhost:8000/api/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      toast.success(`Access revoked for operator: ${username}`);
+      fetchAdminData(); // Refresh logs
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to delete user.");
+    }
   };
 
   // Platform Actions
-  const handlePurgeCache = () => {
-    toast.success("Dataset and reports cache directories purged.");
+  const handlePurgeCache = async () => {
+    try {
+      const res = await axios.post('http://localhost:8000/api/admin/purge-cache', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success(res.data.message);
+      fetchAdminData(); // Refresh logs
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to purge caches.");
+    }
   };
 
-  const handleWipeHistory = () => {
+  const handleWipeHistory = async () => {
     const confirm = window.confirm("🚨 WARNING: This action will permanently delete all historic traffic predictions. Do you wish to proceed?");
     if (confirm) {
-      toast.success("Prediction logs cleared.");
+      try {
+        const res = await axios.post('http://localhost:8000/api/admin/wipe-history', {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        toast.success(res.data.message);
+        fetchAdminData(); // Refresh logs
+      } catch (error) {
+        toast.error(error.response?.data?.detail || "Failed to wipe history.");
+      }
     }
+  };
+
+  const getActorName = (uid) => {
+    if (!uid) return 'System';
+    const u = users.find(x => x.id === uid);
+    return u ? u.username : `User ${uid}`;
   };
 
   return (
@@ -85,14 +130,16 @@ const AdminPanel = () => {
                     <td className="px-5 py-4 font-medium text-slate-600">{u.email}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                        u.role === 'System Admin' 
+                        u.is_admin 
                           ? 'bg-red-50 text-red-600 border border-red-100' 
                           : 'bg-blue-50 text-blue-600 border border-blue-100'
                       }`}>
-                        {u.role}
+                        {u.is_admin ? 'System Admin' : 'Security Analyst'}
                       </span>
                     </td>
-                    <td className="px-5 py-4 font-mono text-slate-400">{u.created}</td>
+                    <td className="px-5 py-4 font-mono text-slate-400">
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => handleDeleteUser(u.id, u.username)}
@@ -164,20 +211,24 @@ const AdminPanel = () => {
                   <th className="px-5 py-3">Timestamp</th>
                   <th className="px-5 py-3">User/Actor</th>
                   <th className="px-5 py-3">Event Action</th>
-                  <th className="px-5 py-3">Origin IP</th>
+                  <th className="px-5 py-3">Details</th>
                   <th className="px-5 py-3">Result</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40">
                 {audits.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-800/25 transition-colors">
-                    <td className="px-5 py-3.5 text-slate-500">{a.timestamp}</td>
-                    <td className="px-5 py-3.5 font-bold text-slate-300">{a.actor}</td>
+                    <td className="px-5 py-3.5 text-slate-500">
+                      {a.created_at ? new Date(a.created_at + 'Z').toLocaleString() : ''}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-slate-300">
+                      {getActorName(a.user_id)}
+                    </td>
                     <td className="px-5 py-3.5 text-blue-400">{a.action}</td>
-                    <td className="px-5 py-3.5 text-slate-400">{a.ip}</td>
+                    <td className="px-5 py-3.5 text-slate-400">{a.details}</td>
                     <td className="px-5 py-3.5">
                       <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-900 rounded px-1 py-0.5 text-[10px] font-bold">
-                        {a.status}
+                        SUCCESS
                       </span>
                     </td>
                   </tr>

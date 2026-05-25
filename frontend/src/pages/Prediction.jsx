@@ -53,57 +53,38 @@ const Prediction = () => {
       Protocol: parseInt(protocol)
     };
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Basic rule-based classification mock to show logical outputs
-      let label = 'BENIGN';
-      let confidence = 0.992;
-      let severity = 'LOW';
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post('http://localhost:8000/api/predict', { input_data: inputData }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const { prediction_label, confidence, threat_level } = response.data;
+      
       let action = 'Passed';
-
-      if (inputData.Protocol === 6 && inputData.SYN_Flag_Cnt === 1 && inputData.Flow_Pkts_s > 1000) {
-        label = 'SYN Flood';
-        confidence = 0.998;
-        severity = 'CRITICAL';
-        action = 'Flow Blocked & Port Isolated';
-      } else if (inputData.Protocol === 17 && inputData.Flow_Pkts_s > 800) {
-        label = 'UDP Flood';
-        confidence = 0.987;
-        severity = 'CRITICAL';
-        action = 'Rate Limited at Firewall Gate';
-      } else if (inputData.Flow_Duration > 8000 && inputData.SYN_Flag_Cnt === 0 && inputData.Flow_Pkts_s > 500) {
-        label = 'HTTP Flood';
-        confidence = 0.942;
-        severity = 'HIGH';
-        action = 'IP Blocked & Challenged via CAPTCHA';
-      }
-
+      if (threat_level === 'CRITICAL') action = 'Flow Blocked & Port Isolated';
+      else if (threat_level === 'HIGH') action = 'IP Blocked & Challenged via CAPTCHA';
+      
       setResult({
-        label,
-        confidence,
-        severity,
-        action,
+        label: prediction_label,
+        confidence: confidence,
+        severity: threat_level,
+        action: action,
         timestamp: new Date().toLocaleTimeString([], { hour12: false }),
         inputs: inputData
       });
 
-      if (label === 'BENIGN') {
+      if (prediction_label === 'BENIGN') {
         toast.success("Traffic flow classified as clean.");
       } else {
-        toast.error(`⚠️ Alert: Malicious ${label} Flow Identified!`, {
+        toast.error(`⚠️ Alert: Malicious ${prediction_label} Flow Identified!`, {
           icon: <AlertTriangle className="text-red-500" />
         });
       }
-
-      setSubmitting(false);
-    }, 1000);
-
-    // Backend Integration
-    try {
-      // const response = await axios.post('http://localhost:8000/api/predict', inputData);
-      // setResult(response.data);
     } catch (e) {
-      console.warn("Backend API unavailable, using local mock classifier.");
+      toast.error("Prediction failed: " + (e.response?.data?.detail || e.message));
+    } finally {
+      setSubmitting(false);
     }
   };
 

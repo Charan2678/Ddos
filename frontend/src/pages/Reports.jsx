@@ -21,47 +21,88 @@ const Reports = () => {
   const [reportType, setReportType] = useState('pdf');
   const [scope, setScope] = useState('all');
 
-  const [reportsList, setReportsList] = useState([
-    { id: 1, title: 'DDoS Attack Summary Report - May 24', date: '2026-05-24 18:30:12', creator: 'admin', type: 'PDF', size: '1.4 MB' },
-    { id: 2, title: 'Intrusion Detection Telemetry Log - May 24', date: '2026-05-24 10:15:45', creator: 'analyst', type: 'CSV', size: '28.4 MB' },
-    { id: 3, title: 'Model Accuracy Evaluation Report - Q2', date: '2026-05-22 09:00:00', creator: 'admin', type: 'PDF', size: '3.1 MB' },
-    { id: 4, title: 'SYN Anomaly Audit Feed - May 20', date: '2026-05-20 14:24:18', creator: 'analyst', type: 'CSV', size: '8.2 MB' }
-  ]);
-
-  // Handle Compile Report
-  const handleCompileReport = (e) => {
-    e.preventDefault();
-    setCompiling(true);
-
-    setTimeout(() => {
-      const typeLabel = reportType.toUpperCase();
-      const scopeLabel = scope === 'all' ? 'Full Security Summary' : scope === 'ml' ? 'ML Metrics Audit' : 'Threat logs feed';
-      
-      const newReport = {
-        id: Date.now(),
-        title: `${scopeLabel} (${dateRange.toUpperCase()}) - ${new Date().toLocaleDateString()}`,
-        date: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        creator: 'admin',
-        type: typeLabel,
-        size: typeLabel === 'PDF' ? '1.8 MB' : '420 KB'
-      };
-
-      setReportsList(prev => [newReport, ...prev]);
-      setCompiling(false);
-      toast.success("Security report compiled successfully!");
-    }, 1800);
-
-    // Backend integration
+  const [reportsList, setReportsList] = useState([]);
+  
+  const fetchReports = async () => {
     try {
-      // axios.post('http://localhost:8000/api/generate-report', { range: dateRange, format: reportType, scope });
-    } catch (e) {
-      console.warn("Backend offline, using local compiler mock.");
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/reports', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReportsList(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch reports:", error);
     }
   };
 
-  // Mock download action
-  const triggerDownload = (report) => {
-    toast.success(`Download started: ${report.title}.${report.type.toLowerCase()}`);
+  React.useEffect(() => {
+    fetchReports();
+  }, []);
+
+  // Handle Compile Report
+  const handleCompileReport = async (e) => {
+    e.preventDefault();
+    setCompiling(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      // FastAPI expects these as query parameters since there's no Pydantic schema in the route definition
+      const url = `http://localhost:8000/api/generate-report?date_range=${dateRange}&report_format=${reportType}&scope=${scope}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        toast.success("Security report compiled successfully!");
+        fetchReports(); // Refresh the list
+      } else {
+        const err = await response.json();
+        toast.error(`Error: ${err.detail || 'Failed to compile report'}`);
+      }
+    } catch (e) {
+      toast.error("Network error while compiling report.");
+    } finally {
+      setCompiling(false);
+    }
+  };
+
+  // Real download action
+  const triggerDownload = async (report) => {
+    toast.info(`Download started: ${report.title}`);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8000/api/reports/${report.id}/download`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        toast.error("Failed to download report. It may have been deleted.");
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      // Extract filename from report if possible, or generate a safe one
+      const ext = report.report_type ? report.report_type.toLowerCase() : 'pdf';
+      const safeTitle = report.title ? report.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : `report_${report.id}`;
+      link.download = `${safeTitle}.${ext}`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+    } catch (e) {
+      console.error("Download error:", e);
+      toast.error("Network error while downloading.");
+    }
   };
 
   return (
@@ -201,17 +242,19 @@ const Reports = () => {
                   <tr key={report.id} className="hover:bg-slate-50/50">
                     <td className="px-5 py-4 font-bold text-slate-700 flex items-center space-x-2.5">
                       <span className={`inline-flex items-center rounded-lg p-1.5 ${
-                        report.type === 'PDF' 
+                        (report.report_type || '').toUpperCase() === 'PDF' 
                           ? 'bg-red-50 text-red-500' 
                           : 'bg-emerald-50 text-emerald-500'
                       }`}>
-                        {report.type === 'PDF' ? <FileText className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
+                        {(report.report_type || '').toUpperCase() === 'PDF' ? <FileText className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
                       </span>
                       <span className="truncate block max-w-56" title={report.title}>{report.title}</span>
                     </td>
-                    <td className="px-5 py-4 font-mono text-slate-400">{report.date}</td>
-                    <td className="px-5 py-4 font-medium text-slate-600 uppercase">{report.creator}</td>
-                    <td className="px-5 py-4 font-mono text-slate-400">{report.size}</td>
+                    <td className="px-5 py-4 font-mono text-slate-400">
+                      {report.created_at ? new Date(report.created_at + 'Z').toLocaleString() : ''}
+                    </td>
+                    <td className="px-5 py-4 font-medium text-slate-600 uppercase">ADMIN</td>
+                    <td className="px-5 py-4 font-mono text-slate-400">---</td>
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => triggerDownload(report)}

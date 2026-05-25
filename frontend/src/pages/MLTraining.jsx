@@ -39,7 +39,7 @@ const MLTraining = () => {
   const [results, setResults] = useState(null);
 
   // File Upload Handler
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       if (!selectedFile.name.endsWith('.csv')) {
@@ -50,85 +50,87 @@ const MLTraining = () => {
       setFile(selectedFile);
       setUploading(true);
 
-      // Simulate parsing dataset metadata
-      setTimeout(() => {
-        setDatasetInfo({
-          fileName: selectedFile.name,
-          fileSize: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
-          rowCount: 458920,
-          columnCount: 78,
-          featuresDetected: 77,
-          classes: ['BENIGN', 'SYN Flood', 'UDP Flood', 'ICMP Flood', 'HTTP Flood']
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.post("http://localhost:8000/api/upload-dataset", formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
         });
+        
+        setDatasetInfo({
+          id: res.data.id,
+          fileName: res.data.name,
+          fileSize: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+          rowCount: res.data.row_count,
+          columnCount: res.data.features.split(',').length,
+          featuresDetected: res.data.features.split(',').length,
+          classes: ['Wait for training']
+        });
+        toast.success("Dataset uploaded successfully!");
+      } catch (err) {
+        toast.error("Failed to upload dataset: " + (err.response?.data?.detail || err.message));
+        setFile(null);
+      } finally {
         setUploading(false);
-        toast.success("Dataset parsed and validated successfully!");
-      }, 1200);
+      }
     }
   };
 
   // Run ML Pipeline Training
   const runTraining = async () => {
-    if (!file) {
+    if (!datasetInfo?.id) {
       toast.warning("Please upload a dataset CSV first.");
       return;
     }
 
     setTraining(true);
-    setTrainLogs([]);
+    setTrainLogs(["Starting remote ML pipeline on server...", "Downsampling heavy classes..."]);
     setResults(null);
 
-    // Simulated log steps
-    const steps = [
-      { msg: 'Initializing data preprocessing pipeline...', delay: 500 },
-      { msg: 'Reading CSV structure and cleaning null rows...', delay: 1200 },
-      { msg: 'Removing duplicate records: 1,482 rows removed.', delay: 1800 },
-      { msg: 'Applying StandardScaler to numeric traffic flows...', delay: 2400 },
-      { msg: 'Encoding categorical vectors (Protocol, Flag maps)...', delay: 3000 },
-      { msg: 'Partitioning dataset: 80% Train / 20% Test partition...', delay: 3600 },
-      { msg: 'Model 1/6: Training Logistic Regression... Done. (Acc: 89.2%)', delay: 4200 },
-      { msg: 'Model 2/6: Training Decision Tree... Done. (Acc: 98.4%)', delay: 4800 },
-      { msg: 'Model 3/6: Training Random Forest... Done. (Acc: 99.7%)', delay: 5500 },
-      { msg: 'Model 4/6: Training Support Vector Machine... Done. (Acc: 94.1%)', delay: 6200 },
-      { msg: 'Model 5/6: Training K-Nearest Neighbors... Done. (Acc: 97.8%)', delay: 6800 },
-      { msg: 'Model 6/6: Training XGBoost Gradient Booster... Done. (Acc: 99.8%)', delay: 7500 },
-      { msg: 'Computing validation matrices & precision matrices...', delay: 8000 },
-      { msg: 'Selecting Champion Model (highest F1-score)... XGBoost Selected.', delay: 8500 },
-      { msg: 'Serializing weights -> best_model.pkl saved to models Registry.', delay: 9000 }
-    ];
-
-    // Trigger sequential printouts in console
-    steps.forEach((step, idx) => {
-      setTimeout(() => {
-        setTrainLogs(prev => [...prev, step.msg]);
-        
-        // Final completion logic
-        if (idx === steps.length - 1) {
-          setResults({
-            champion: 'XGBoost',
-            models: [
-              { name: 'XGBoost', accuracy: 0.9984, precision: 0.9981, recall: 0.9984, f1: 0.9982, time: 4.8 },
-              { name: 'Random Forest', accuracy: 0.9972, precision: 0.9968, recall: 0.9972, f1: 0.9970, time: 12.4 },
-              { name: 'Decision Tree', accuracy: 0.9841, precision: 0.9839, recall: 0.9841, f1: 0.9840, time: 1.1 },
-              { name: 'K-Nearest Neighbors', accuracy: 0.9782, precision: 0.9774, recall: 0.9782, f1: 0.9778, time: 2.3 },
-              { name: 'Support Vector Machine', accuracy: 0.9415, precision: 0.9380, recall: 0.9415, f1: 0.9397, time: 45.2 },
-              { name: 'Logistic Regression', accuracy: 0.8924, precision: 0.8841, recall: 0.8924, f1: 0.8882, time: 3.5 }
-            ]
-          });
-          setTraining(false);
-          toast.success("ML pipeline completed! Model best_model.pkl registered.");
-        }
-      }, step.delay);
-    });
-
-    // Real backend integration hook
     try {
-      // In a live system, we would first POST file to /upload-dataset, then call /train-model
-      // Const formData = new FormData();
-      // formData.append("file", file);
-      // const uploadRes = await axios.post("http://localhost:8000/api/upload-dataset", formData);
-      // const trainRes = await axios.post("http://localhost:8000/api/train-model", { dataset_id: uploadRes.data.id, split: trainSplit });
+      const token = localStorage.getItem('token');
+      
+      // We start an interval to mock live terminal updates while backend blocks
+      const mockInterval = setInterval(() => {
+        const randomLogs = ["Optimizing gradients...", "Computing epoch loss...", "Fitting hyper-planes..."];
+        setTrainLogs(prev => [...prev.slice(-10), randomLogs[Math.floor(Math.random() * randomLogs.length)]]);
+      }, 1500);
+
+      const trainRes = await axios.post(`http://localhost:8000/api/train-model?dataset_id=${datasetInfo.id}`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      clearInterval(mockInterval);
+      
+      const compareRes = await axios.get("http://localhost:8000/api/compare-models", {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      // Format results for UI
+      const resultsData = {
+        champion: compareRes.data.champion,
+        models: compareRes.data.models.map(m => ({
+          name: m.name,
+          accuracy: m.accuracy,
+          precision: m.precision,
+          recall: m.recall,
+          f1: m.f1_score,
+          time: parseFloat(m.training_time).toFixed(2)
+        }))
+      };
+      
+      setResults(resultsData);
+      setTrainLogs(prev => [...prev, "Pipeline executed successfully."]);
+      toast.success("ML pipeline completed! Models registered.");
     } catch (e) {
-      console.warn("Backend unavailable, using simulated pipeline results.");
+      toast.error("Training failed: " + (e.response?.data?.detail || e.message));
+      setTrainLogs(prev => [...prev, "ERROR: Pipeline failed."]);
+    } finally {
+      setTraining(false);
     }
   };
 

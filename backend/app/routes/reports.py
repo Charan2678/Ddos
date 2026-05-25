@@ -36,6 +36,18 @@ def generate_report(
     # 2. Query prediction logs from database
     predictions = db.query(Prediction).filter(Prediction.created_at >= threshold).order_by(Prediction.created_at.desc()).all()
     
+    # Determine title based on scope
+    if scope == "attacks":
+        title_prefix = "Threat Log History"
+        # Filter predictions to only anomalies
+        predictions = [p for p in predictions if p.prediction_label != "BENIGN"]
+    elif scope == "ml":
+        title_prefix = "Classifier Accuracies & Benchmarks"
+    else:
+        title_prefix = "Full Security Summary"
+        
+    report_title = f"{title_prefix} ({date_range.upper()})"
+
     # Format database logs into serializable list-of-dicts for report generator
     logs_data = []
     total_anomalies = 0
@@ -85,7 +97,7 @@ def generate_report(
             
         # 4. Save metadata in DB
         db_report = Report(
-            title=f"Intrusion Audit Report ({date_range.upper()})",
+            title=report_title,
             file_path=file_path,
             report_type=report_format.upper(),
             created_by=current_user.id
@@ -120,7 +132,11 @@ def list_reports(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return db.query(Report).order_by(Report.created_at.desc()).all()
+    query = db.query(Report)
+    if not current_user.is_admin:
+        query = query.filter(Report.created_by == current_user.id)
+        
+    return query.order_by(Report.created_at.desc()).all()
 
 @router.get("/reports/{report_id}/download")
 def download_report(
@@ -147,3 +163,38 @@ def download_report(
         media_type="application/octet-stream",
         filename=os.path.basename(report.file_path)
     )
+
+@router.get("/reports/history")
+def get_prediction_history(
+    limit: int = 150,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    query = db.query(Prediction)
+    
+    # Isolate history based on user role
+    if not current_user.is_admin:
+        query = query.filter(Prediction.user_id == current_user.id)
+        
+    predictions = query.order_by(Prediction.created_at.desc()).limit(limit).all()
+    
+    logs = []
+    for p in predictions:
+        proto_name = p.input_data.get("protocol_name", "N/A")
+        if proto_name == "N/A":
+            proto_num = p.input_data.get("protocol", 6)
+            proto_name = "TCP" if proto_num == 6 else "UDP" if proto_num == 17 else "ICMP"
+            
+        logs.append({
+            "id": p.id,
+            "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "ip": p.input_data.get("src_ip", "192.168.1.100"),
+            "proto": proto_name,
+            "port": "Raw",
+            "classification": p.prediction_label,
+            "confidence": p.confidence,
+            "level": p.threat_level
+        })
+        
+    return logs
+
