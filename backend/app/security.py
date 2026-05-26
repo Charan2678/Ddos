@@ -75,3 +75,19 @@ async def get_current_user(
         
     return user
 
+def create_password_reset_token(email: str) -> str:
+    """Generates a 15-minute JWT token specifically for password resets."""
+    expire = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    to_encode = {"sub": email, "type": "password_reset", "exp": expire}
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+def verify_password_reset_token(token: str) -> Optional[str]:
+    """Decodes a password reset token and returns the email if valid and not expired."""
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+

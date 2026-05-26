@@ -86,9 +86,10 @@ def predict_single_flow(
         else:
             threat_level = "CRITICAL" # SYN or UDP Floods
             
-        # Fetch the active model metadata from database to link the prediction log
-        latest_trained = db.query(TrainedModel).order_by(TrainedModel.created_at.desc()).first()
-        model_id = latest_trained.id if latest_trained else None
+        champion_model = db.query(TrainedModel).filter(TrainedModel.file_path == 'models/best_model.joblib').order_by(TrainedModel.created_at.desc()).first()
+        model_id = champion_model.id if champion_model else None
+        model_name = champion_model.name if champion_model else "Champion Model"
+        model_algorithm = champion_model.algorithm if champion_model else "Random Forest"
         
         # Save prediction entry in history database
         db_prediction = Prediction(
@@ -113,7 +114,11 @@ def predict_single_flow(
         db.commit()
         db.refresh(db_prediction)
         
-        return db_prediction
+        response_data = PredictionResponse.model_validate(db_prediction)
+        response_data.model_name = model_name
+        response_data.model_algorithm = model_algorithm
+        
+        return response_data
         
     except Exception as e:
         db.rollback()
@@ -220,12 +225,18 @@ async def predict_batch_csv(
             db.bulk_save_objects(db_predictions)
             db.commit()
                 
+        champion_model = db.query(TrainedModel).filter(TrainedModel.file_path == 'models/best_model.joblib').order_by(TrainedModel.created_at.desc()).first()
+        model_name = champion_model.name if champion_model else "Champion Model"
+        model_algorithm = champion_model.algorithm if champion_model else "Random Forest"
+                
         return BatchPredictionResponse(
             file_name=file.filename,
             total_scanned=len(predictions),
             benign_count=benign_count,
             attack_count=attack_count,
             attack_types=attack_types,
+            model_name=model_name,
+            model_algorithm=model_algorithm,
             anomalies=anomalies
         )
         

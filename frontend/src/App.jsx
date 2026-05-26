@@ -17,6 +17,8 @@ import Prediction from './pages/Prediction';
 import Reports from './pages/Reports';
 import History from './pages/History';
 import AdminPanel from './pages/AdminPanel';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Shared Layout for authenticated dashboard pages
 const DashboardLayout = () => {
@@ -46,6 +48,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Dashboard Routes - all nested under /app */}
           <Route path="/app" element={

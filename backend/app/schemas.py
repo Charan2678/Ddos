@@ -17,6 +17,13 @@ class UserLogin(BaseModel):
     username_or_email: str
     password: str
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6)
+
 class UserResponse(UserBase):
     id: int
     is_admin: bool
@@ -84,6 +91,8 @@ class PredictionResponse(BaseModel):
     confidence: float
     threat_level: str
     model_id: Optional[int] = None
+    model_name: Optional[str] = None
+    model_algorithm: Optional[str] = None
     user_id: Optional[int] = None
     created_at: datetime.datetime
 
@@ -124,4 +133,6 @@ class BatchPredictionResponse(BaseModel):
     benign_count: int
     attack_count: int
     attack_types: dict
+    model_name: Optional[str] = None
+    model_algorithm: Optional[str] = None
     anomalies: List[BatchPredictionItem]

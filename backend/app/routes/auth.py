@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User, SystemLog
-from app.schemas import UserCreate, UserLogin, UserResponse, Token
-from app.security import verify_password, get_password_hash, create_access_token
+from app.schemas import UserCreate, UserLogin, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest
+from app.security import verify_password, get_password_hash, create_access_token, create_password_reset_token, verify_password_reset_token
+from app.utils.email import send_reset_email
 
 router = APIRouter(prefix="/api", tags=["authentication"])
 
@@ -89,3 +90,59 @@ def login_user(login_data: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": user
     }
+
+@router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    clean_email = request.email.strip()
+    user = db.query(User).filter(User.email == clean_email).first()
+    if not user:
+        # Prevent email enumeration by returning a generic success message
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
+        
+    token = create_password_reset_token(user.email)
+    # React frontend reset route
+    reset_link = f"http://localhost:5173/reset-password?token={token}"
+    
+    email_sent = send_reset_email(user.email, reset_link)
+    
+    if not email_sent:
+        # Log failure, but still return success to prevent email enumeration
+        print(f"Failed to send reset email to {user.email}")
+        
+    sys_log = SystemLog(
+        action="PASSWORD_RESET_REQUESTED",
+        details=f"Password reset requested for {user.email}",
+        user_id=user.id
+    )
+    db.add(sys_log)
+    db.commit()
+    
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email = verify_password_reset_token(request.token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+        
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    user.hashed_password = get_password_hash(request.new_password)
+    
+    sys_log = SystemLog(
+        action="PASSWORD_RESET_COMPLETED",
+        details=f"Password reset successfully completed for {user.email}",
+        user_id=user.id
+    )
+    db.add(sys_log)
+    db.commit()
+    
+    return {"message": "Password has been reset successfully"}

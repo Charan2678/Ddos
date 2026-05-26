@@ -10,6 +10,7 @@ A full-stack cybersecurity application that captures live network packets, class
 - Secure **JWT-based authentication** (login / register)
 - **Role-based access control** — Operators see only their own data; Admins have full visibility
 - Passwords hashed with **bcrypt**
+- **Secure Password Reset** via automated SMTP email delivery with expiring JWT tokens
 
 ### 📡 Live Network Monitoring
 - Real-time **packet capture** using Scapy across all network interfaces
@@ -17,9 +18,9 @@ A full-stack cybersecurity application that captures live network packets, class
 - Live traffic graph with instant spike detection
 
 ### 🤖 ML-Powered Threat Detection
-- **XGBoost** and **Random Forest** models trained on labelled attack datasets
+- **XGBoost**, **Random Forest**, **SVM**, **KNN**, and **Logistic Regression** models trained on labelled attack datasets
 - Detects **5+ attack classes**: SYN Flood, UDP Flood, ICMP Flood, HTTP Flood, and Benign traffic
-- Displays **confidence scores** and threat severity ratings for every prediction
+- Displays **confidence scores**, threat severity ratings, and exact **Detection Engine (Champion Model)** for every prediction
 - Model accuracy: **99.8%** | Detection latency: **< 1 second**
 
 ### 📊 Dashboard & Analytics
@@ -82,6 +83,8 @@ DDoS/
 │           ├── History.jsx
 │           ├── Reports.jsx
 │           ├── MLTraining.jsx
+│           ├── ForgotPassword.jsx
+│           ├── ResetPassword.jsx
 │           └── AdminPanel.jsx
 │
 └── attack_test.py            # Script to simulate attack traffic
@@ -133,6 +136,8 @@ Create a `.env` file inside the `backend/` folder:
 SECRET_KEY=your_secret_key_here
 DATABASE_URL=postgresql://postgres:00000000@localhost:5432/ddos_shield
 ACCESS_TOKEN_EXPIRE_MINUTES=60
+SMTP_EMAIL=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
 ```
 
 ---

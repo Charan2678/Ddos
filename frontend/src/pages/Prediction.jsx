@@ -74,7 +74,9 @@ const Prediction = () => {
         severity: threat_level,
         action: action,
         timestamp: new Date().toLocaleTimeString([], { hour12: false }),
-        inputs: inputData
+        inputs: inputData,
+        modelName: response.data.model_name,
+        modelAlgorithm: response.data.model_algorithm
       });
 
       if (prediction_label === 'BENIGN') {
@@ -121,7 +123,9 @@ const Prediction = () => {
           benign: data.benign_count,
           attacks: data.attack_count,
           types: data.attack_types,
-          anomalies: data.anomalies
+          anomalies: data.anomalies,
+          modelName: data.model_name,
+          modelAlgorithm: data.model_algorithm
         });
         
         if (data.attack_count > 0) {
@@ -477,6 +481,12 @@ const Prediction = () => {
 
               <div className="space-y-4 text-xs">
                 <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-400 font-semibold">Detection Engine:</span>
+                  <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    {result.modelName} ({result.modelAlgorithm})
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
                   <span className="text-slate-400 font-semibold">Model Confidence:</span>
                   <span className="text-slate-800 font-bold">{(result.confidence * 100).toFixed(2)}%</span>
                 </div>
@@ -537,6 +547,12 @@ const Prediction = () => {
               </div>
 
               <div className="space-y-4 text-xs">
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-400 font-semibold">Detection Engine:</span>
+                  <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                    {batchResults.modelName} ({batchResults.modelAlgorithm})
+                  </span>
+                </div>
                 <div className="flex justify-between border-b border-slate-50 pb-2">
                   <span className="text-slate-400 font-semibold">File Scanned:</span>
                   <span className="text-slate-800 font-bold max-w-40 truncate">{batchResults.fileName}</span>
