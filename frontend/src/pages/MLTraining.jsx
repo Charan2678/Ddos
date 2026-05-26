@@ -55,7 +55,7 @@ const MLTraining = () => {
       
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.post("http://localhost:8000/api/upload-dataset", formData, {
+        const res = await axios.post("http://127.0.0.1:8000/api/upload-dataset", formData, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
@@ -101,12 +101,12 @@ const MLTraining = () => {
         setTrainLogs(prev => [...prev.slice(-10), randomLogs[Math.floor(Math.random() * randomLogs.length)]]);
       }, 1500);
 
-      const trainRes = await axios.post(`http://localhost:8000/api/train-model?dataset_id=${datasetInfo.id}`, {}, {
+      const trainRes = await axios.post(`http://127.0.0.1:8000/api/train-model?dataset_id=${datasetInfo.id}`, {}, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       clearInterval(mockInterval);
       
-      const compareRes = await axios.get("http://localhost:8000/api/compare-models", {
+      const compareRes = await axios.get("http://127.0.0.1:8000/api/compare-models", {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

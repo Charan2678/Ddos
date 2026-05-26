@@ -24,7 +24,7 @@ const History = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/reports/history', {
+      const response = await fetch('http://127.0.0.1:8000/api/reports/history', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -46,7 +46,7 @@ const Dashboard = () => {
   useEffect(() => {
     // Initialize WebSocket to passively listen to traffic
     try {
-      const ws = new WebSocket('ws://localhost:8000/api/live-traffic');
+      const ws = new WebSocket('ws://127.0.0.1:8000/api/live-traffic');
       wsRef.current = ws;
 
       ws.onopen = () => setIsConnected(true);

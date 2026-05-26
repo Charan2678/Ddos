@@ -23,8 +23,8 @@ const AdminPanel = () => {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       
       const [usersRes, logsRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/users', config),
-        axios.get('http://localhost:8000/api/logs', config)
+        axios.get('http://127.0.0.1:8000/api/users', config),
+        axios.get('http://127.0.0.1:8000/api/logs', config)
       ]);
       
       setUsers(usersRes.data);
@@ -51,7 +51,7 @@ const AdminPanel = () => {
     if (!window.confirm(`Are you sure you want to delete ${username}?`)) return;
 
     try {
-      await axios.delete(`http://localhost:8000/api/users/${userId}`, {
+      await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(prev => prev.filter(u => u.id !== userId));
@@ -65,7 +65,7 @@ const AdminPanel = () => {
   // Platform Actions
   const handlePurgeCache = async () => {
     try {
-      const res = await axios.post('http://localhost:8000/api/admin/purge-cache', {}, {
+      const res = await axios.post('http://127.0.0.1:8000/api/admin/purge-cache', {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success(res.data.message);
@@ -79,7 +79,7 @@ const AdminPanel = () => {
     const confirm = window.confirm("🚨 WARNING: This action will permanently delete all historic traffic predictions. Do you wish to proceed?");
     if (confirm) {
       try {
-        const res = await axios.post('http://localhost:8000/api/admin/wipe-history', {}, {
+        const res = await axios.post('http://127.0.0.1:8000/api/admin/wipe-history', {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success(res.data.message);

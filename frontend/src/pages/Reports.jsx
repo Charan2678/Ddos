@@ -26,7 +26,7 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/reports', {
+      const response = await fetch('http://127.0.0.1:8000/api/reports', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -50,7 +50,7 @@ const Reports = () => {
     try {
       const token = localStorage.getItem('token');
       // FastAPI expects these as query parameters since there's no Pydantic schema in the route definition
-      const url = `http://localhost:8000/api/generate-report?date_range=${dateRange}&report_format=${reportType}&scope=${scope}`;
+      const url = `http://127.0.0.1:8000/api/generate-report?date_range=${dateRange}&report_format=${reportType}&scope=${scope}`;
       
       const response = await fetch(url, {
         method: 'POST',
@@ -76,7 +76,7 @@ const Reports = () => {
     toast.info(`Download started: ${report.title}`);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/api/reports/${report.id}/download`, {
+      const response = await fetch(`http://127.0.0.1:8000/api/reports/${report.id}/download`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

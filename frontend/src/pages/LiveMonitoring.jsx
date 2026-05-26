@@ -54,7 +54,7 @@ const LiveMonitoring = () => {
     if (monitoring) {
       // STOP MONITORING
       try {
-        await fetch('http://localhost:8000/api/stop-monitoring', { method: 'POST', headers });
+        await fetch('http://127.0.0.1:8000/api/stop-monitoring', { method: 'POST', headers });
       } catch (e) {
         console.error("Failed to stop backend sniffer", e);
       }
@@ -71,7 +71,7 @@ const LiveMonitoring = () => {
     } else {
       // START MONITORING
       try {
-        await fetch('http://localhost:8000/api/start-monitoring', { method: 'POST', headers });
+        await fetch('http://127.0.0.1:8000/api/start-monitoring', { method: 'POST', headers });
       } catch (e) {
         console.error("Failed to start backend sniffer", e);
       }
@@ -81,7 +81,7 @@ const LiveMonitoring = () => {
       
       // Try to connect to real backend WebSocket
       try {
-        const ws = new WebSocket('ws://localhost:8000/api/live-traffic');
+        const ws = new WebSocket('ws://127.0.0.1:8000/api/live-traffic');
         wsRef.current = ws;
 
         ws.onopen = () => {

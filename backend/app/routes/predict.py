@@ -1,12 +1,13 @@
 import os
 import joblib
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Prediction, TrainedModel, User, SystemLog
-from app.schemas import PredictionCreate, PredictionResponse
+from app.schemas import PredictionCreate, PredictionResponse, BatchPredictionResponse, BatchPredictionItem
 from app.security import get_current_user
 from app.utils.ml_pipeline import FEATURE_COLS, INV_LABEL_MAP
 
@@ -120,6 +121,96 @@ def predict_single_flow(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Inference pipeline execution error: {str(e)}"
         )
+
+@router.post("/predict/batch", response_model=BatchPredictionResponse)
+async def predict_batch_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported.")
+        
+    # 1. Load active ML model
+    model, scaler = load_champion_model()
+    if not model or not scaler:
+        raise HTTPException(status_code=400, detail="Champion model not trained.")
+        
+    try:
+        # 2. Read CSV
+        df = pd.read_csv(file.file)
+        
+        # 3. Identify Source IP column
+        ip_col = None
+        for col in df.columns:
+            if col.strip().lower() in ["source ip", "source_ip", "src ip", "src_ip", "ip"]:
+                ip_col = col
+                break
+                
+        # 4. Normalize columns for feature extraction
+        original_columns = list(df.columns)
+        df.columns = [c.lower().strip() for c in df.columns]
+        ip_col_lower = ip_col.lower().strip() if ip_col else "unknown_ip"
+        
+        feature_data = []
+        source_ips = []
+        
+        for index, row in df.iterrows():
+            sip = str(row.get(ip_col_lower, "Unknown IP")) if ip_col else "Unknown IP"
+            source_ips.append(sip)
+            
+            vec = []
+            for col in FEATURE_COLS:
+                val = row.get(col, 0.0)
+                vec.append(float(val) if not pd.isna(val) else 0.0)
+            feature_data.append(vec)
+            
+        if not feature_data:
+            raise ValueError("CSV is empty or missing features.")
+            
+        # 5. ML Classification
+        X_scaled = scaler.transform(feature_data)
+        predictions = model.predict(X_scaled)
+        probabilities = model.predict_proba(X_scaled)
+        
+        anomalies = []
+        benign_count = 0
+        attack_count = 0
+        attack_types = {}
+        
+        for i in range(len(predictions)):
+            class_idx = int(predictions[i])
+            conf = float(probabilities[i][class_idx])
+            label = INV_LABEL_MAP.get(class_idx, "UNKNOWN")
+            
+            if label == "BENIGN":
+                benign_count += 1
+            else:
+                attack_count += 1
+                attack_types[label] = attack_types.get(label, 0) + 1
+                threat = "HIGH" if label in ["ICMP Flood", "HTTP Flood"] else "CRITICAL"
+                
+                anomalies.append(BatchPredictionItem(
+                    source_ip=source_ips[i],
+                    prediction_label=label,
+                    threat_level=threat,
+                    confidence=conf
+                ))
+                
+        # Limit anomalies sent to frontend to max 500 to prevent browser crash
+        anomalies = anomalies[:500]
+                
+        return BatchPredictionResponse(
+            file_name=file.filename,
+            total_scanned=len(predictions),
+            benign_count=benign_count,
+            attack_count=attack_count,
+            attack_types=attack_types,
+            anomalies=anomalies
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch processing failed: {str(e)}")
 
 
 # ==========================================

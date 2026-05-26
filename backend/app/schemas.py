@@ -111,3 +111,17 @@ class ReportResponse(BaseModel):
     created_at: datetime.datetime
 
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+class BatchPredictionItem(BaseModel):
+    source_ip: str
+    prediction_label: str
+    threat_level: str
+    confidence: float
+
+class BatchPredictionResponse(BaseModel):
+    file_name: str
+    total_scanned: int
+    benign_count: int
+    attack_count: int
+    attack_types: dict
+    anomalies: List[BatchPredictionItem]

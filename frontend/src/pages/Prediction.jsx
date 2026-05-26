@@ -10,10 +10,13 @@ import {
   AlertTriangle,
   HelpCircle,
   FileText,
-  Loader2
+  Loader2,
+  Download
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Prediction = () => {
   const [activeTab, setActiveTab] = useState('manual'); // manual | batch
@@ -55,7 +58,7 @@ const Prediction = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:8000/api/predict', { input_data: inputData }, {
+      const response = await axios.post('http://127.0.0.1:8000/api/predict', { input_data: inputData }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -89,7 +92,7 @@ const Prediction = () => {
   };
 
   // Batch CSV Prediction Handler
-  const handleBatchFileChange = (e) => {
+  const handleBatchFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       if (!file.name.endsWith('.csv')) {
@@ -98,23 +101,156 @@ const Prediction = () => {
       }
       setBatchFile(file);
       setSubmitting(true);
-
-      setTimeout(() => {
-        setBatchResults({
-          fileName: file.name,
-          scanned: 14820,
-          benign: 14782,
-          attacks: 38,
-          types: {
-            'SYN Flood': 24,
-            'UDP Flood': 10,
-            'HTTP Flood': 4
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.post('http://127.0.0.1:8000/api/predict/batch', formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
           }
         });
+        
+        const data = response.data;
+        setBatchResults({
+          fileName: data.file_name,
+          scanned: data.total_scanned,
+          benign: data.benign_count,
+          attacks: data.attack_count,
+          types: data.attack_types,
+          anomalies: data.anomalies
+        });
+        
+        if (data.attack_count > 0) {
+          toast.error(`Batch run complete: ${data.attack_count} anomalies isolated.`);
+        } else {
+          toast.success("Batch run complete: No anomalies found.");
+        }
+      } catch (err) {
+        toast.error("Batch prediction failed: " + (err.response?.data?.detail || err.message));
+      } finally {
         setSubmitting(false);
-        toast.error("Batch run complete: 38 anomalies isolated.");
-      }, 1500);
+        e.target.value = null; // reset input
+      }
     }
+  };
+
+  const handleDownloadCSV = () => {
+    if (!batchResults || !batchResults.anomalies) return;
+    
+    const headers = ["Source IP", "Classification", "Threat Level", "Confidence"];
+    const rows = batchResults.anomalies.map(a => [
+      a.source_ip,
+      a.prediction_label,
+      a.threat_level,
+      `${(a.confidence * 100).toFixed(2)}%`
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `ddos_anomalies_report_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!batchResults || !batchResults.anomalies) return;
+
+    const doc = new jsPDF();
+    
+    // Add Title
+    doc.setFontSize(22);
+    doc.setTextColor(30, 58, 138); // blue-900
+    doc.text("DDoS Shield: Network Threat Report", 14, 22);
+    
+    // Add Subtitle
+    doc.setFontSize(11);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // Summary Box
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 38, 182, 35, 3, 3, 'FD');
+    
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setFont("helvetica", "bold");
+    doc.text("Scan Summary", 20, 48);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Target File: ${batchResults.fileName}`, 20, 56);
+    doc.text(`Total Flows Scanned: ${batchResults.scanned.toLocaleString()}`, 20, 63);
+    
+    // Colored stats
+    doc.setTextColor(5, 150, 105); // emerald-600
+    doc.text(`Clean / Benign: ${batchResults.benign.toLocaleString()}`, 110, 56);
+    
+    doc.setTextColor(220, 38, 38); // red-600
+    doc.text(`Malicious Detected: ${batchResults.attacks.toLocaleString()}`, 110, 63);
+    
+    // Attack breakdown table if exists
+    let startY = 85;
+    if (batchResults.attacks > 0) {
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Threat Vector Breakdown", 14, 85);
+      
+      const breakdownRows = Object.keys(batchResults.types).map(type => [
+        type, 
+        `${batchResults.types[type]} incidents`
+      ]);
+      
+      autoTable(doc, {
+        startY: 90,
+        head: [['Attack Classification', 'Volume']],
+        body: breakdownRows,
+        theme: 'grid',
+        headStyles: { fillColor: [239, 68, 68], textColor: 255 },
+        styles: { fontSize: 10 }
+      });
+      
+      startY = doc.lastAutoTable.finalY + 15;
+    }
+    
+    // Anomalies Table
+    if (batchResults.anomalies.length > 0) {
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Identified Attack Sources", 14, startY);
+      
+      const anomalyRows = batchResults.anomalies.map(a => [
+        a.source_ip,
+        a.prediction_label,
+        a.threat_level,
+        `${(a.confidence * 100).toFixed(1)}%`
+      ]);
+      
+      autoTable(doc, {
+        startY: startY + 5,
+        head: [['Source IP', 'Classification', 'Threat Level', 'AI Confidence']],
+        body: anomalyRows,
+        theme: 'striped',
+        headStyles: { fillColor: [30, 58, 138], textColor: 255 },
+        styles: { fontSize: 9 }
+      });
+    }
+    
+    doc.save(`DDoS_Shield_Report_${new Date().getTime()}.pdf`);
   };
 
   return (
@@ -377,9 +513,27 @@ const Prediction = () => {
               animate={{ opacity: 1, y: 0 }}
               className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-premium space-y-6"
             >
-              <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-800">Batch Summary</h3>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-800">Batch Summary</h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleDownloadCSV}
+                    className="flex items-center space-x-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>CSV</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="flex items-center space-x-1.5 text-[10px] font-bold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/20"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>PDF Report</span>
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-4 text-xs">
@@ -412,6 +566,38 @@ const Prediction = () => {
                   </div>
                 ))}
               </div>
+
+              {batchResults.anomalies && batchResults.anomalies.length > 0 && (
+                <div className="mt-6">
+                  <span className="text-slate-400 font-semibold text-xs block mb-2">Detected Anomalies (Source Origins):</span>
+                  <div className="overflow-y-auto max-h-64 rounded-xl border border-slate-100">
+                    <table className="min-w-full text-left text-xs">
+                      <thead className="bg-slate-50 sticky top-0 border-b border-slate-100 shadow-sm z-10">
+                        <tr>
+                          <th className="px-3 py-2 font-bold text-slate-600">Source IP</th>
+                          <th className="px-3 py-2 font-bold text-slate-600">Classification</th>
+                          <th className="px-3 py-2 font-bold text-slate-600">Threat</th>
+                          <th className="px-3 py-2 font-bold text-slate-600">Confidence</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {batchResults.anomalies.map((anomaly, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-3 py-2 font-medium text-slate-800 font-mono">{anomaly.source_ip}</td>
+                            <td className="px-3 py-2 font-bold text-red-600">{anomaly.prediction_label}</td>
+                            <td className="px-3 py-2">
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${anomaly.threat_level === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-orange-100 text-orange-700'}`}>
+                                {anomaly.threat_level}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-slate-500">{(anomaly.confidence * 100).toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
