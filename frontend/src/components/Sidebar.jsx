@@ -11,7 +11,8 @@ import {
   LogOut,
   ShieldAlert,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Brain
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
@@ -22,6 +23,7 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
     { name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard, adminOnly: false },
     { name: 'Live Monitor', path: '/app/live-monitoring', icon: Activity, adminOnly: false },
     { name: 'Inference Panel', path: '/app/predict', icon: Play, adminOnly: false },
+    { name: 'ML Studio', path: '/app/ml-training', icon: Brain, adminOnly: false },
     { name: 'Reports', path: '/app/reports', icon: FileSpreadsheet, adminOnly: false },
     { name: 'History Logs', path: '/app/history', icon: HistoryIcon, adminOnly: false },
     { name: 'Admin Console', path: '/app/admin', icon: ShieldCheck, adminOnly: true },

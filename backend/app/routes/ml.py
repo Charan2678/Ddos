@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import timedelta
 
 from app.database import get_db
 from app.models import Dataset, TrainedModel, User, SystemLog
@@ -22,6 +23,12 @@ def train_models(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dataset not found"
+        )
+        
+    if dataset.row_count < 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Dataset is too small for Machine Learning. It has {dataset.row_count} rows, but requires at least 100."
         )
         
     try:
