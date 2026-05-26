@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ShieldAlert, Lock, Loader2, ArrowLeft } from 'lucide-react';
+import { Lock, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-toastify';
+import logoImg from '../assets/logo.png';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -65,9 +66,10 @@ const ResetPassword = () => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-100 blur-[100px] opacity-60"></div>
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-10 z-10">
+        {/* Logo & Header */}
         <div className="flex justify-center mb-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-            <ShieldAlert className="h-8 w-8" />
+          <div className="flex h-16 w-16 items-center justify-center">
+            <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain" />
           </div>
         </div>
         

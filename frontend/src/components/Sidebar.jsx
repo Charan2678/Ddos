@@ -13,6 +13,7 @@ import {
   Menu,
   ChevronLeft
 } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 const Sidebar = ({ isOpen = true, setIsOpen }) => {
   const { user, logout, isAdmin } = useAuth();
@@ -32,8 +33,8 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
       <div className={`flex items-center border-b border-slate-100 ${isOpen ? 'h-20 px-6 justify-between' : 'py-6 px-0 justify-center flex-col space-y-4'}`}>
         {isOpen ? (
           <Link to="/" className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20">
-              <ShieldAlert className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center">
+              <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain drop-shadow-md" />
             </div>
             <div>
               <h1 className="text-base font-bold leading-none text-slate-800">DDoS Shield</h1>
@@ -41,8 +42,8 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
             </div>
           </Link>
         ) : (
-          <Link to="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:opacity-80 transition-opacity" title="Home">
-            <ShieldAlert className="h-4 w-4" />
+          <Link to="/" className="flex h-8 w-8 items-center justify-center hover:opacity-80 transition-opacity" title="Home">
+            <img src={logoImg} alt="Logo" className="h-full w-full object-contain drop-shadow-md" />
           </Link>
         )}
 

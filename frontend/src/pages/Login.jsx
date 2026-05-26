@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import axios from 'axios';
+import logoImg from '../assets/logo.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -60,8 +61,8 @@ const Login = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/50 to-transparent pointer-events-none"></div>
 
           <div className="relative z-10 mt-4">
-            <div className="text-xs font-bold tracking-[0.2em] text-blue-100 uppercase mb-8">
-              DDOS SHIELD
+            <div className="mb-8 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-xl shadow-black/10 p-2.5">
+              <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain" />
             </div>
             <h1 className="text-[42px] font-extrabold mb-4 leading-tight tracking-tight text-white">
               DDoS Detection & Network Threat Monitoring <br />

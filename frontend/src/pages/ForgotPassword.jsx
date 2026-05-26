@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldAlert, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import logoImg from '../assets/logo.png';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -45,8 +46,8 @@ const ForgotPassword = () => {
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-8 md:p-10 z-10">
         <div className="flex justify-center mb-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-            <ShieldAlert className="h-8 w-8" />
+          <div className="flex h-16 w-16 items-center justify-center">
+            <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain" />
           </div>
         </div>
         

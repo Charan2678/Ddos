@@ -2,15 +2,17 @@ import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import {
-  Shield,
   Activity,
   Brain,
   FileBarChart,
   ChevronRight,
   Wifi,
   AlertTriangle,
-  Lock
+  Lock,
+  ArrowRight,
+  Play
 } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 // ── Fade-in helper ──────────────────────────────────────────────────────────
 const FadeIn = ({ children, delay = 0 }) => {
@@ -82,9 +84,9 @@ const LandingPage = () => {
       {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <header className="fixed top-0 inset-x-0 z-50 border-b border-blue-200 bg-white shadow-sm">
         <div className="mx-auto max-w-6xl px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30">
-              <Shield className="h-4 w-4 text-white" />
+          <div className="flex items-center space-x-3 hover:opacity-90 transition-opacity">
+            <div className="flex h-9 w-9 items-center justify-center">
+              <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain" />
             </div>
             <span className="font-extrabold text-[15px] tracking-tight text-blue-800">DDoS Shield</span>
           </div>
@@ -300,9 +302,9 @@ const LandingPage = () => {
       {/* ── FOOTER ──────────────────────────────────────────────────────── */}
       <footer className="border-t-2 border-blue-200 bg-blue-50 py-8 px-6">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Shield className="h-3.5 w-3.5 text-white" />
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="flex h-8 w-8 items-center justify-center">
+              <img src={logoImg} alt="DDoS Shield Logo" className="h-full w-full object-contain" />
             </div>
             <span className="font-bold text-[13px] text-blue-800">DDoS Shield</span>
           </div>
