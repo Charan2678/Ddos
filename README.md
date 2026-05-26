@@ -154,11 +154,15 @@ Create a `.env` file inside the `backend/` folder:
 
 ```env
 SECRET_KEY=your_secret_key_here
+# PostgreSQL Configuration (Recommended for Production)
 DATABASE_URL=postgresql://postgres:00000000@localhost:5432/ddos_shield
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 SMTP_EMAIL=your_email@gmail.com
 SMTP_PASSWORD=your_app_password
 ```
+
+**Database Configuration Note:**
+The application uses **PostgreSQL** by default if the `DATABASE_URL` is provided. If you do not have PostgreSQL installed, you can simply remove or comment out the `DATABASE_URL` line from your `.env` file. The backend will intelligently fall back to using a local **SQLite** database (`ddos_system.db`) which requires zero setup!
 
 ---
 
