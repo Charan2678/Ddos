@@ -33,9 +33,12 @@ const History = () => {
         const data = await response.json();
         setLogs(data);
       } else {
-        toast.error("Failed to fetch history logs.");
+        const errorText = await response.text();
+        console.error("History fetch error:", response.status, errorText);
+        toast.error(`Failed to fetch history logs: ${response.status}`);
       }
     } catch (error) {
+      console.error("Network error:", error);
       toast.error("Network error while fetching history.");
     } finally {
       setIsLoading(false);

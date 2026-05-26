@@ -199,6 +199,26 @@ async def predict_batch_csv(
                 
         # Limit anomalies sent to frontend to max 500 to prevent browser crash
         anomalies = anomalies[:500]
+        
+        # Save batch anomalies to the database so they appear in History Logs
+        db_predictions = []
+        for anomaly in anomalies:
+            row_dict = {
+                "src_ip": anomaly.source_ip,
+                "protocol_name": "CSV Batch"
+            }
+            db_predictions.append(Prediction(
+                input_data=row_dict,
+                prediction_label=anomaly.prediction_label,
+                confidence=anomaly.confidence,
+                threat_level=anomaly.threat_level,
+                model_id=None,
+                user_id=current_user.id
+            ))
+            
+        if db_predictions:
+            db.bulk_save_objects(db_predictions)
+            db.commit()
                 
         return BatchPredictionResponse(
             file_name=file.filename,
