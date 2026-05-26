@@ -11,6 +11,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const History = () => {
   const [logs, setLogs] = useState([]);
@@ -89,6 +91,64 @@ const History = () => {
     toast.success("History logs exported successfully!");
   };
 
+  const handleDownloadPDF = () => {
+    if (filteredLogs.length === 0) {
+      toast.warning("No logs to export.");
+      return;
+    }
+
+    const doc = new jsPDF();
+    
+    // Add Title
+    doc.setFontSize(22);
+    doc.setTextColor(30, 58, 138); // blue-900
+    doc.text("DDoS Shield: Network Threat History", 14, 22);
+    
+    // Add Subtitle
+    doc.setFontSize(11);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+    
+    // History Table
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Detection Audit Logs", 14, 45);
+    
+    const anomalyRows = filteredLogs.map(log => [
+      formatLocalTime(log.timestamp),
+      log.ip,
+      log.proto,
+      log.port,
+      log.classification,
+      `${(log.confidence * 100).toFixed(2)}%`,
+      log.level
+    ]);
+    
+    autoTable(doc, {
+      startY: 50,
+      head: [['Timestamp', 'Source IP', 'Protocol', 'Target Port', 'Classification', 'Confidence', 'Threat Level']],
+      body: anomalyRows,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235], textColor: 255 },
+      styles: { fontSize: 8, cellPadding: 2 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        4: { fontStyle: 'bold', textColor: [220, 38, 38] }
+      },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 4) {
+          if (data.cell.raw === 'BENIGN') {
+            data.cell.styles.textColor = [5, 150, 105]; // emerald-600
+          }
+        }
+      }
+    });
+    
+    doc.save(`ddos_history_report_${new Date().getTime()}.pdf`);
+    toast.success("PDF report generated successfully!");
+  };
+
   const handleRefresh = () => {
     fetchHistory();
     toast.info("Refreshed prediction history logs.");
@@ -125,10 +185,18 @@ const History = () => {
           
           <button
             onClick={triggerExport}
-            className="flex items-center space-x-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 py-3 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition-all"
+            className="flex items-center space-x-2 rounded-2xl bg-blue-50 hover:bg-blue-100 text-blue-700 px-5 py-3 text-xs font-bold transition-all"
           >
             <Download className="h-4 w-4" />
             <span>Export CSV</span>
+          </button>
+          
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center space-x-2 rounded-2xl bg-blue-600 hover:bg-blue-700 px-5 py-3 text-xs font-bold text-white shadow-md shadow-blue-500/10 transition-all"
+          >
+            <Download className="h-4 w-4" />
+            <span>PDF Report</span>
           </button>
         </div>
       </div>

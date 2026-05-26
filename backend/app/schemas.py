@@ -135,7 +135,7 @@ class BatchPredictionResponse(BaseModel):
     attack_types: dict
     model_name: Optional[str] = None
     model_algorithm: Optional[str] = None
-    anomalies: List[BatchPredictionItem]
+    predictions: List[BatchPredictionItem]
 
 class DashboardStatsResponse(BaseModel):
     total_scanned: int

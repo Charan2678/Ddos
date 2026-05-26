@@ -178,7 +178,7 @@ async def predict_batch_csv(
         predictions = model.predict(X_scaled)
         probabilities = model.predict_proba(X_scaled)
         
-        anomalies = []
+        predictions_list = []
         benign_count = 0
         attack_count = 0
         attack_types = {}
@@ -190,24 +190,25 @@ async def predict_batch_csv(
             
             if label == "BENIGN":
                 benign_count += 1
+                threat = "LOW"
             else:
                 attack_count += 1
                 attack_types[label] = attack_types.get(label, 0) + 1
                 threat = "HIGH" if label in ["ICMP Flood", "HTTP Flood"] else "CRITICAL"
                 
-                anomalies.append(BatchPredictionItem(
-                    source_ip=source_ips[i],
-                    prediction_label=label,
-                    threat_level=threat,
-                    confidence=conf
-                ))
+            predictions_list.append(BatchPredictionItem(
+                source_ip=source_ips[i],
+                prediction_label=label,
+                threat_level=threat,
+                confidence=conf
+            ))
                 
-        # Limit anomalies sent to frontend to max 500 to prevent browser crash
-        anomalies = anomalies[:500]
+        # Limit predictions sent to frontend to max 500 to prevent browser crash
+        predictions_list = predictions_list[:500]
         
         # Save batch anomalies to the database so they appear in History Logs
         db_predictions = []
-        for anomaly in anomalies:
+        for anomaly in [p for p in predictions_list if p.prediction_label != "BENIGN"]:
             row_dict = {
                 "src_ip": anomaly.source_ip,
                 "protocol_name": "CSV Batch"
@@ -237,7 +238,7 @@ async def predict_batch_csv(
             attack_types=attack_types,
             model_name=model_name,
             model_algorithm=model_algorithm,
-            anomalies=anomalies
+            predictions=predictions_list
         )
         
     except Exception as e:

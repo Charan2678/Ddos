@@ -123,7 +123,7 @@ const Prediction = () => {
           benign: data.benign_count,
           attacks: data.attack_count,
           types: data.attack_types,
-          anomalies: data.anomalies,
+          predictions: data.predictions,
           modelName: data.model_name,
           modelAlgorithm: data.model_algorithm
         });
@@ -143,10 +143,10 @@ const Prediction = () => {
   };
 
   const handleDownloadCSV = () => {
-    if (!batchResults || !batchResults.anomalies) return;
+    if (!batchResults || !batchResults.predictions) return;
     
     const headers = ["Source IP", "Classification", "Threat Level", "Confidence"];
-    const rows = batchResults.anomalies.map(a => [
+    const rows = batchResults.predictions.map(a => [
       a.source_ip,
       a.prediction_label,
       a.threat_level,
@@ -169,7 +169,7 @@ const Prediction = () => {
   };
 
   const handleDownloadPDF = () => {
-    if (!batchResults || !batchResults.anomalies) return;
+    if (!batchResults || !batchResults.predictions) return;
 
     const doc = new jsPDF();
     
@@ -231,13 +231,13 @@ const Prediction = () => {
     }
     
     // Anomalies Table
-    if (batchResults.anomalies.length > 0) {
+    if (batchResults.predictions.length > 0) {
       doc.setTextColor(15, 23, 42);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
-      doc.text("Identified Attack Sources", 14, startY);
+      doc.text("All Flow Classifications", 14, startY);
       
-      const anomalyRows = batchResults.anomalies.map(a => [
+      const anomalyRows = batchResults.predictions.map(a => [
         a.source_ip,
         a.prediction_label,
         a.threat_level,
@@ -583,9 +583,9 @@ const Prediction = () => {
                 ))}
               </div>
 
-              {batchResults.anomalies && batchResults.anomalies.length > 0 && (
+              {batchResults.predictions && batchResults.predictions.length > 0 && (
                 <div className="mt-6">
-                  <span className="text-slate-400 font-semibold text-xs block mb-2">Detected Anomalies (Source Origins):</span>
+                  <span className="text-slate-400 font-semibold text-xs block mb-2">All Flow Classifications (Source Origins):</span>
                   <div className="overflow-y-auto max-h-64 rounded-xl border border-slate-100">
                     <table className="min-w-full text-left text-xs">
                       <thead className="bg-slate-50 sticky top-0 border-b border-slate-100 shadow-sm z-10">
@@ -597,16 +597,16 @@ const Prediction = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {batchResults.anomalies.map((anomaly, idx) => (
+                        {batchResults.predictions.map((item, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-3 py-2 font-medium text-slate-800 font-mono">{anomaly.source_ip}</td>
-                            <td className="px-3 py-2 font-bold text-red-600">{anomaly.prediction_label}</td>
+                            <td className="px-3 py-2 font-medium text-slate-800 font-mono">{item.source_ip}</td>
+                            <td className={`px-3 py-2 font-bold ${item.prediction_label === 'BENIGN' ? 'text-emerald-600' : 'text-red-600'}`}>{item.prediction_label}</td>
                             <td className="px-3 py-2">
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${anomaly.threat_level === 'CRITICAL' ? 'bg-red-600 text-white' : 'bg-orange-100 text-orange-700'}`}>
-                                {anomaly.threat_level}
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${item.threat_level === 'CRITICAL' ? 'bg-red-600 text-white' : item.threat_level === 'HIGH' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                {item.threat_level}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-slate-500">{(anomaly.confidence * 100).toFixed(1)}%</td>
+                            <td className="px-3 py-2 text-slate-500">{(item.confidence * 100).toFixed(1)}%</td>
                           </tr>
                         ))}
                       </tbody>
