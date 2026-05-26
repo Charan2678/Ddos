@@ -20,13 +20,15 @@ import AdminPanel from './pages/AdminPanel';
 
 // Shared Layout for authenticated dashboard pages
 const DashboardLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      {/* Sidebar - fixed width 64 */}
-      <Sidebar />
+    <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
+      {/* Sidebar */}
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       {/* Main Content Area */}
-      <div className="flex-1 pl-64">
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'pl-64' : 'pl-20'}`}>
         <main className="p-8 max-w-[1400px] mx-auto min-h-screen flex flex-col">
           <Outlet />
         </main>

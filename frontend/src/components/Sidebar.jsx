@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
@@ -9,10 +9,11 @@ import {
   History as HistoryIcon, 
   ShieldCheck, 
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  Menu
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen = true, setIsOpen }) => {
   const { user, logout, isAdmin } = useAuth();
 
   const navigationItems = [
@@ -25,22 +26,41 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-20 flex h-screen w-64 flex-col border-r border-slate-200 bg-white shadow-premium">
+    <aside className={`fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-slate-200 bg-white shadow-premium transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
       {/* Brand Header */}
-      <div className="flex h-16 items-center px-6 border-b border-slate-100">
-        <div className="flex items-center space-x-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20">
+      <div className={`flex h-16 items-center border-b border-slate-100 ${isOpen ? 'px-6 justify-between' : 'px-0 justify-center'}`}>
+        {isOpen ? (
+          <Link to="/" className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold leading-none text-slate-800">DDoS Shield</h1>
+              <span className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase">ML Detection</span>
+            </div>
+          </Link>
+        ) : (
+          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:opacity-80 transition-opacity">
             <ShieldAlert className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold leading-none text-slate-800">DDoS Shield</h1>
-            <span className="text-[10px] font-semibold text-blue-600 tracking-wider uppercase">ML Detection</span>
-          </div>
-        </div>
+          </Link>
+        )}
+
+        {/* Toggle Button */}
+        {setIsOpen && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className={`flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors ${
+              !isOpen ? 'absolute -right-3 top-5 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm' : 'h-8 w-8'
+            }`}
+            title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            <Menu className={isOpen ? "h-4 w-4" : "h-3 w-3"} />
+          </button>
+        )}
       </div>
 
       {/* Nav Links */}
-      <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+      <nav className="flex-1 space-y-1 px-3 py-6 overflow-y-auto">
         {navigationItems.map((item) => {
           if (item.adminOnly && !isAdmin) return null;
           const Icon = item.icon;
@@ -48,47 +68,55 @@ const Sidebar = () => {
             <NavLink
               key={item.name}
               to={item.path}
+              title={!isOpen ? item.name : undefined}
               className={({ isActive }) =>
-                `flex items-center space-x-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                `flex items-center rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${isOpen ? 'space-x-3' : 'justify-center'} ${
                   isActive
-                    ? 'bg-blue-50 text-blue-600 shadow-sm border-l-4 border-blue-600 pl-3'
+                    ? `bg-blue-50 text-blue-600 shadow-sm border-blue-600 ${isOpen ? 'border-l-4 pl-2' : 'border-l-4'}`
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`
               }
             >
               <Icon className="h-5 w-5 shrink-0" />
-              <span>{item.name}</span>
+              {isOpen && <span>{item.name}</span>}
             </NavLink>
           );
         })}
       </nav>
 
       {/* User Footer Profile & Logout */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="flex items-center space-x-3 px-2 py-1.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 uppercase">
+      <div className={`border-t border-slate-100 bg-slate-50/50 ${isOpen ? 'p-4' : 'p-3 flex flex-col items-center'}`}>
+        {isOpen ? (
+          <div className="flex items-center space-x-3 px-2 py-1.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 uppercase">
+              {user?.username?.substring(0, 2) || 'OP'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 truncate leading-none mb-1">
+                {user?.username || 'Operator'}
+              </p>
+              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                isAdmin 
+                  ? 'bg-red-50 text-red-600 border border-red-100' 
+                  : 'bg-blue-50 text-blue-600 border border-blue-100'
+              }`}>
+                {isAdmin ? 'System Admin' : 'Security Analyst'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600 uppercase" title={user?.username || 'Operator'}>
             {user?.username?.substring(0, 2) || 'OP'}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate leading-none mb-1">
-              {user?.username || 'Operator'}
-            </p>
-            <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-              isAdmin 
-                ? 'bg-red-50 text-red-600 border border-red-100' 
-                : 'bg-blue-50 text-blue-600 border border-blue-100'
-            }`}>
-              {isAdmin ? 'System Admin' : 'Security Analyst'}
-            </span>
-          </div>
-        </div>
+        )}
         
         <button
           onClick={logout}
-          className="mt-3 flex w-full items-center justify-center space-x-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-red-50 hover:text-red-600 hover:border-red-100"
+          title="Sign Out"
+          className={`mt-3 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 shadow-sm transition-all hover:bg-red-50 hover:text-red-600 hover:border-red-100 ${isOpen ? 'w-full space-x-2 px-4 py-2.5' : 'w-10 h-10 p-0 shrink-0'}`}
         >
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          {isOpen && <span>Sign Out</span>}
         </button>
       </div>
     </aside>
