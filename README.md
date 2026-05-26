@@ -53,6 +53,26 @@ A full-stack cybersecurity application that captures live network packets, class
 
 ---
 
+## 🧠 How the AI Model Works (Beginner's Guide)
+
+To understand how the Machine Learning model detects DDoS attacks, imagine two computers talking to each other over the internet is just like two people having a conversation over the phone.
+
+### Network Header Terminology
+* **Protocol:** The "language" or "rules" used to speak. (e.g., TCP is like a reliable registered letter; UDP is like shouting through a megaphone).
+* **Flow Duration:** How long the entire interaction lasted, measured in microseconds.
+* **SYN Flag Count:** The digital equivalent of saying "Hello?" to start a phone call. A "SYN Flood" attack is when a hacker says "Hello?" millions of times but never starts the conversation, freezing the server.
+* **Total Fwd Packets (Forward):** The total number of sentences YOU sent to the server.
+* **Total Bwd Packets (Backward):** The total number of sentences the SERVER sent back to you.
+* **Fwd Packets / sec:** How fast you are talking (e.g., A normal user sends 5 packets/sec; a DDoS bot sends 50,000 packets/sec).
+* **Flow Bytes / sec:** The speed/weight of the data transfer, similar to water flowing through a pipe.
+* **Fwd Packet Len Mean:** The *average size* of the messages you are sending.
+* **Bwd Packet Len Mean:** The *average size* of the messages the server replies with.
+
+### The Random Forest Decision Engine
+The AI (like our Champion **Random Forest** model) evaluates all these numbers simultaneously. For example, if it sees a Flow Duration of just `0.2` microseconds, `0` Backward Packets, and a Forward Packets/sec rate of `28,000`, the AI instantly recognizes: *"A normal human doesn't talk this fast and hang up immediately without receiving a reply. This is a UDP Flood Attack!"* By learning these patterns across thousands of data points, the AI can detect anomalous attacks with 99.8% accuracy.
+
+---
+
 ## 🗂️ Project Structure
 
 ```
