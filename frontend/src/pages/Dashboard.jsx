@@ -42,6 +42,37 @@ const Dashboard = () => {
 
   const wsRef = useRef(null);
 
+  // Fetch persistent Database stats (Inference Panel results)
+  const fetchDashboardStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://127.0.0.1:8000/api/dashboard-stats', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      
+      setTotalTraffic(data.total_scanned);
+      setTotalAttacks(data.attacks_blocked);
+      setActiveThreats(data.active_threats);
+      if (data.attack_distribution) setAttackDistribution(data.attack_distribution);
+      if (data.recent_logs) setRecentLogs(data.recent_logs);
+      
+    } catch (e) {
+      console.error("Failed to fetch dashboard stats", e);
+    }
+  };
+
+  useEffect(() => {
+    // Initial fetch
+    fetchDashboardStats();
+    
+    // Poll every 5 seconds so it updates automatically when inference runs
+    const interval = setInterval(fetchDashboardStats, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Connection and API Handlers
   useEffect(() => {
     // Initialize WebSocket to passively listen to traffic
@@ -142,16 +173,16 @@ const Dashboard = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Analytics</h1>
-          <p className="text-sm text-slate-500">Live network telemetry and intrusion monitoring dashboard</p>
+          <p className="text-sm text-slate-500">Live telemetry and Inference Panel prediction history</p>
         </div>
         <div className="flex items-center space-x-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-xs font-semibold text-slate-600">
           <Clock className="h-4 w-4 text-blue-600" />
-          <span>Real-time Sniffer status:</span>
-          <span className={`flex h-2.5 w-2.5 rounded-full relative ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`}>
-            {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+          <span>Real-time DB Sync:</span>
+          <span className="flex h-2.5 w-2.5 rounded-full relative bg-emerald-500">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           </span>
-          <span className={`${isConnected ? 'text-emerald-600' : 'text-red-600'} font-bold uppercase tracking-wider`}>
-            {isConnected ? 'ONLINE' : 'OFFLINE'}
+          <span className="text-emerald-600 font-bold uppercase tracking-wider">
+            SYNCING
           </span>
         </div>
       </div>

@@ -3,11 +3,12 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.models import Report, Prediction, User, SystemLog
-from app.schemas import ReportResponse
+from app.schemas import ReportResponse, DashboardStatsResponse
 from app.security import get_current_user
 from app.utils.report_gen import generate_pdf_report, generate_csv_report
 
@@ -198,3 +199,59 @@ def get_prediction_history(
         
     return logs
 
+@router.get("/dashboard-stats", response_model=DashboardStatsResponse)
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    # Calculate Total Scanned
+    total_scanned = db.query(Prediction).count()
+    
+    # Calculate Attacks Blocked
+    attacks_blocked = db.query(Prediction).filter(Prediction.prediction_label != "BENIGN").count()
+    
+    # Calculate Active Threats (threats in the last 24h as a proxy)
+    threshold_24h = datetime.utcnow() - timedelta(hours=24)
+    active_threats = db.query(Prediction).filter(
+        Prediction.prediction_label != "BENIGN", 
+        Prediction.created_at >= threshold_24h
+    ).count()
+    
+    # Calculate Attack Distribution
+    distribution = db.query(Prediction.prediction_label, func.count(Prediction.id)).group_by(Prediction.prediction_label).all()
+    
+    attack_distribution = []
+    has_benign = False
+    for label, count in distribution:
+        attack_distribution.append({"name": label, "value": count})
+        if label == "BENIGN":
+            has_benign = True
+            
+    # Guarantee BENIGN exists so the chart renders properly
+    if not has_benign:
+        attack_distribution.append({"name": "BENIGN", "value": 0})
+        
+    # Get Recent Logs (last 50)
+    recent_predictions = db.query(Prediction).order_by(Prediction.created_at.desc()).limit(50).all()
+    recent_logs = []
+    
+    for p in recent_predictions:
+        # Determine protocol
+        proto_num = p.input_data.get("protocol", 6)
+        proto_name = p.input_data.get("protocol_name", "TCP")
+        if proto_name == "TCP" and proto_num == 17: proto_name = "UDP"
+            
+        recent_logs.append({
+            "id": p.id,
+            "time": p.created_at.strftime("%H:%M:%S"),
+            "ip": p.input_data.get("src_ip", p.input_data.get("Source IP", "Unknown IP")),
+            "type": p.prediction_label,
+            "rate": "Batch / Inference", # Since it's from db
+            "severity": p.threat_level
+        })
+        
+    return DashboardStatsResponse(
+        total_scanned=total_scanned,
+        attacks_blocked=attacks_blocked,
+        active_threats=active_threats,
+        packet_rate=0, # Live packet rate from DB isn't applicable, keep 0 or mock
+        attack_distribution=attack_distribution,
+        recent_logs=recent_logs
+    )

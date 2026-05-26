@@ -109,8 +109,8 @@ const Reports = () => {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Reports</h1>
-        <p className="text-sm text-slate-500">Compile audit records, threat statistics, and classifier accuracies into documents</p>
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Inference Reports</h1>
+        <p className="text-sm text-slate-500">Download physical PDF and CSV documents of your Inference Panel prediction history</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -253,8 +253,8 @@ const Reports = () => {
                     <td className="px-5 py-4 font-mono text-slate-400">
                       {report.created_at ? new Date(report.created_at + 'Z').toLocaleString() : ''}
                     </td>
-                    <td className="px-5 py-4 font-medium text-slate-600 uppercase">ADMIN</td>
-                    <td className="px-5 py-4 font-mono text-slate-400">---</td>
+                    <td className="px-5 py-4 font-medium text-slate-600 uppercase">SYSTEM</td>
+                    <td className="px-5 py-4 font-mono text-slate-400">Ready</td>
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => triggerDownload(report)}

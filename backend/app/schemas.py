@@ -136,3 +136,11 @@ class BatchPredictionResponse(BaseModel):
     model_name: Optional[str] = None
     model_algorithm: Optional[str] = None
     anomalies: List[BatchPredictionItem]
+
+class DashboardStatsResponse(BaseModel):
+    total_scanned: int
+    attacks_blocked: int
+    active_threats: int
+    packet_rate: int
+    attack_distribution: List[dict]
+    recent_logs: List[dict]
