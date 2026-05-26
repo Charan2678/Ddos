@@ -27,10 +27,10 @@ A full-stack cybersecurity application that captures live network packets, class
 - Historical threat charts and traffic visualisation
 - Real-time threat feed with classification results
 
-### 📁 Prediction & Upload
-- Upload a **CSV dataset** for batch ML prediction
-- View per-row classification results with confidence scores
-- Supports custom network capture files
+### 📁 Batch Prediction & PDF Reporting
+- **Batch CSV Analysis**: Upload a network capture CSV file to instantly evaluate thousands of flows through the Champion ML model.
+- **Threat Isolation**: Automatically isolates and flags malicious Source IPs, classifying them by attack type (SYN Flood, UDP Flood, etc.).
+- **Client-Side Report Generation**: Instantly download professional, multi-page **PDF Reports** or **CSV logs** directly from your browser containing threat breakdowns, AI confidence scores, and origin IPs without hitting the backend.
 
 ### 📝 Scan History
 - Full log of all past scans and detections
@@ -131,7 +131,7 @@ Create a `.env` file inside the `backend/` folder:
 
 ```env
 SECRET_KEY=your_secret_key_here
-DATABASE_URL=sqlite:///./ddos_system.db
+DATABASE_URL=postgresql://postgres:00000000@localhost:5432/ddos_shield
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 ```
 
@@ -190,7 +190,7 @@ Visit **[http://localhost:5173](http://localhost:5173)** in your browser.
 |---|---|
 | Frontend | React 18, Vite, Tailwind CSS, Framer Motion |
 | Backend | FastAPI, Uvicorn, SQLAlchemy |
-| Database | SQLite (default) |
+| Database | PostgreSQL |
 | ML Models | XGBoost, Random Forest, scikit-learn |
 | Auth | JWT (python-jose), bcrypt (passlib) |
 | Reports | ReportLab (PDF), Pandas (CSV) |
