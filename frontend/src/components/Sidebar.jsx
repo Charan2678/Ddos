@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   LogOut,
   ShieldAlert,
-  Menu
+  Menu,
+  ChevronLeft
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen = true, setIsOpen }) => {
@@ -28,7 +29,7 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
   return (
     <aside className={`fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-slate-200 bg-white shadow-premium transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
       {/* Brand Header */}
-      <div className={`flex h-16 items-center border-b border-slate-100 ${isOpen ? 'px-6 justify-between' : 'px-0 justify-center'}`}>
+      <div className={`flex items-center border-b border-slate-100 ${isOpen ? 'h-20 px-6 justify-between' : 'py-6 px-0 justify-center flex-col space-y-4'}`}>
         {isOpen ? (
           <Link to="/" className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20">
@@ -40,8 +41,8 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
             </div>
           </Link>
         ) : (
-          <Link to="/" className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:opacity-80 transition-opacity">
-            <ShieldAlert className="h-5 w-5" />
+          <Link to="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:opacity-80 transition-opacity" title="Home">
+            <ShieldAlert className="h-4 w-4" />
           </Link>
         )}
 
@@ -49,12 +50,12 @@ const Sidebar = ({ isOpen = true, setIsOpen }) => {
         {setIsOpen && (
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className={`flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors ${
-              !isOpen ? 'absolute -right-3 top-5 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm' : 'h-8 w-8'
+            className={`flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md ${
+              isOpen ? 'h-9 w-9' : 'h-10 w-10 mt-3'
             }`}
             title={isOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            <Menu className={isOpen ? "h-4 w-4" : "h-3 w-3"} />
+            {isOpen ? <ChevronLeft className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         )}
       </div>
